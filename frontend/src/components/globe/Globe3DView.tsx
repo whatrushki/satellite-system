@@ -1,8 +1,8 @@
-import React, { useRef, useEffect, useMemo } from 'react'
+import React, { useRef, useEffect, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { groundPosition } from '@/core/geometryEngine'
+import { groundPosition, computePositions } from '@/core/geometryEngine'
 import { AtmosphereGlowShader } from './AtmosphereShader'
 import { createStarfield } from './Starfield'
 
@@ -173,6 +173,19 @@ export const Globe3DView: React.FC = () => {
   const linksGroupRef = useRef<THREE.Group | null>(null)
   const routeGroupRef = useRef<THREE.Group | null>(null)
   const orbitRingsGroupRef = useRef<THREE.Group | null>(null)
+
+  // Fast mesh node handles for continuous 60fps real-time orbit rendering
+  const satNodesMapRef = useRef<Map<string, {
+    trackerDot: THREE.Mesh
+    arcMesh: THREE.Mesh
+    satModel: THREE.Group
+    linkLine: THREE.Line
+    label: THREE.Sprite
+    innerRingMesh?: THREE.Mesh
+    outerRingMesh?: THREE.Mesh
+  }>>(new Map())
+  const islLineRef = useRef<THREE.LineSegments | null>(null)
+  const routeLineRef = useRef<THREE.Line | null>(null)
 
   // Current snapshot
   const step = simulationResult?.step_s || 120
@@ -642,27 +655,31 @@ export const Globe3DView: React.FC = () => {
       satGroup.add(groundLabel)
     }
 
-    if (!currentSnap) return
+    // 2. Build Satellites (Orbit Tracker Point + Opposite 3D Spacecraft Model + Floating Codename Labels)
+    satNodesMapRef.current.clear()
 
-    const satPosMap = new Map<string, THREE.Vector3>()
+    const initialPositions = computePositions(activeScenario, currentTime_s)
+    const initialSatMap = new Map(initialPositions.map((s) => [s.id, s]))
 
-    // 2. Satellites (Orbit Tracker Point + Opposite 3D Spacecraft Model + Floating Codename Labels)
-    for (const sat of currentSnap.satellites) {
-      const pos = ecefToThree(sat.x_km, sat.y_km, sat.z_km)
-      satPosMap.set(sat.id, pos)
-
+    for (const satCfg of activeScenario.design.satellites) {
+      const sat = initialSatMap.get(satCfg.id) || {
+        id: satCfg.id,
+        plane_id: satCfg.plane_id,
+        active: satCfg.launch_batch <= activeScenario.design.launch_stage,
+        x_km: 0,
+        y_km: 0,
+        z_km: 0,
+      }
       const isSelected = sat.id === selectedSatelliteId
       const isInRoute = activeRoutePath.includes(sat.id)
       const codename = CODENAMES[sat.id] || `Sat-${sat.id}`
-      const radial = pos.clone().normalize()
 
-      // A. Orbital Tracker Node (The Point "точка" on the orbit trajectory)
+      // A. Orbital Tracker Node
       const dotColor = !sat.active ? 0xf87171 : isInRoute ? 0xffffff : isSelected ? 0xffffff : 0xe4e4e7
       const trackerDot = new THREE.Mesh(
         reticleCoreGeo,
         new THREE.MeshBasicMaterial({ color: dotColor })
       )
-      trackerDot.position.copy(pos)
       trackerDot.userData = { type: 'satellite', id: sat.id }
       satGroup.add(trackerDot)
 
@@ -674,41 +691,35 @@ export const Globe3DView: React.FC = () => {
         opacity: isSelected ? 0.95 : 0.65,
       })
       const arcMesh = new THREE.Mesh(reticleArcGeo, arcMat)
-      arcMesh.position.copy(pos)
-      arcMesh.lookAt(pos.clone().multiplyScalar(2))
       arcMesh.userData = { type: 'satellite', id: sat.id }
       satGroup.add(arcMesh)
 
-      // B. The 3D Spacecraft Model opposite / adjacent to the point
-      // Tangential lateral offset in orbital plane (0.35 units)
-      const tangent = new THREE.Vector3(-pos.z, 0, pos.x).normalize()
-      const satModelPos = pos.clone().add(tangent.clone().multiplyScalar(0.35))
-
       // Thin guide link line connecting tracker point to 3D satellite model
-      const linkGeo = new THREE.BufferGeometry().setFromPoints([pos, satModelPos])
+      const linkGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+      ])
       const linkMat = new THREE.LineBasicMaterial({
         color: sat.active ? 0xd4d4d8 : 0xf87171,
         transparent: true,
         opacity: 0.35,
       })
-      satGroup.add(new THREE.Line(linkGeo, linkMat))
+      const linkLine = new THREE.Line(linkGeo, linkMat)
+      satGroup.add(linkLine)
 
       // 3D Model with solar panels and antenna dish
       const satModel = createSatelliteModel(sat.id, sat.active, isSelected, isInRoute)
-      satModel.position.copy(satModelPos)
-
-      // Nadir-pointing orientation: antenna points toward Earth center
-      satModel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial)
       satGroup.add(satModel)
 
-      // C. Floating Text Label above the node (Aurora-1, Aurora-2, Helios-R, etc.)
+      // Floating Text Label above the node
       const labelColor = !sat.active ? '#fca5a5' : isSelected ? '#ffffff' : '#cbd5e1'
       const label = createTextSprite(codename, labelColor, 0.70, 0.17)
-      label.position.copy(pos.clone().add(radial.clone().multiplyScalar(0.28)))
       label.userData = { type: 'satellite', id: sat.id }
       satGroup.add(label)
 
-      // D. Halo ring for selected satellite
+      // Halo ring for selected satellite
+      let innerRingMesh: THREE.Mesh | undefined
+      let outerRingMesh: THREE.Mesh | undefined
       if (isSelected) {
         const innerRingGeo = new THREE.RingGeometry(0.22, 0.27, 24)
         const innerRingMat = new THREE.MeshBasicMaterial({
@@ -717,9 +728,7 @@ export const Globe3DView: React.FC = () => {
           transparent: true,
           opacity: 0.85,
         })
-        const innerRingMesh = new THREE.Mesh(innerRingGeo, innerRingMat)
-        innerRingMesh.position.copy(pos)
-        innerRingMesh.lookAt(pos.clone().multiplyScalar(2))
+        innerRingMesh = new THREE.Mesh(innerRingGeo, innerRingMat)
         satGroup.add(innerRingMesh)
 
         const outerRingGeo = new THREE.RingGeometry(0.32, 0.36, 24)
@@ -729,57 +738,123 @@ export const Globe3DView: React.FC = () => {
           transparent: true,
           opacity: 0.45,
         })
-        const outerRingMesh = new THREE.Mesh(outerRingGeo, outerRingMat)
-        outerRingMesh.position.copy(pos)
-        outerRingMesh.lookAt(pos.clone().multiplyScalar(2))
+        outerRingMesh = new THREE.Mesh(outerRingGeo, outerRingMat)
         satGroup.add(outerRingMesh)
       }
+
+      satNodesMapRef.current.set(sat.id, {
+        trackerDot,
+        arcMesh,
+        satModel,
+        linkLine,
+        label,
+        innerRingMesh,
+        outerRingMesh,
+      })
     }
 
     // 3. Inter-Satellite Links (ISL Mesh)
-    const linkPositions: number[] = []
-    for (const [u, v] of currentSnap.edges) {
-      const posU = satPosMap.get(u)
-      const posV = satPosMap.get(v)
-      if (posU && posV) {
-        linkPositions.push(posU.x, posU.y, posU.z, posV.x, posV.y, posV.z)
-      }
-    }
-    if (linkPositions.length > 0) {
-      const lineGeo = new THREE.BufferGeometry()
-      lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linkPositions, 3))
-      const lineMat = new THREE.LineBasicMaterial({
-        color: 0x52525b,
-        transparent: true,
-        opacity: 0.35,
-      })
-      linksGroup.add(new THREE.LineSegments(lineGeo, lineMat))
-    }
+    const islGeo = new THREE.BufferGeometry()
+    const islMat = new THREE.LineBasicMaterial({
+      color: 0x52525b,
+      transparent: true,
+      opacity: 0.35,
+    })
+    const islMesh = new THREE.LineSegments(islGeo, islMat)
+    linksGroup.add(islMesh)
+    islLineRef.current = islMesh
 
     // 4. Active Route (Ground -> Sat ... -> Gateway)
-    if (activeRoutePath.length >= 2) {
-      const routePoints: THREE.Vector3[] = []
-      for (const nodeId of activeRoutePath) {
-        const gNode = activeScenario.ground_sites.find((g) => g.id === nodeId)
-        if (gNode) {
-          const [gx, gy, gz] = groundPosition(gNode.lat_deg, gNode.lon_deg)
-          routePoints.push(ecefToThree(gx, gy, gz))
-        } else {
-          const sPos = satPosMap.get(nodeId)
-          if (sPos) routePoints.push(sPos.clone())
+    const routeGeo = new THREE.BufferGeometry()
+    const routeMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      linewidth: 2.0,
+    })
+    const routeMesh = new THREE.Line(routeGeo, routeMat)
+    routeGroup.add(routeMesh)
+    routeLineRef.current = routeMesh
+  }, [activeScenario, activeRoutePath, selectedClientId, selectedSatelliteId])
+
+  // Continuous real-time position update function
+  const updateRealtimePositions = useCallback(
+    (t: number) => {
+      if (!activeScenario || satNodesMapRef.current.size === 0) return
+
+      const positions = computePositions(activeScenario, t)
+      const satPosMap = new Map<string, THREE.Vector3>()
+
+      for (const sat of positions) {
+        const node = satNodesMapRef.current.get(sat.id)
+        const pos = ecefToThree(sat.x_km, sat.y_km, sat.z_km)
+        satPosMap.set(sat.id, pos)
+
+        if (node) {
+          const radial = pos.clone().normalize()
+          node.trackerDot.position.copy(pos)
+          node.arcMesh.position.copy(pos)
+          node.arcMesh.lookAt(pos.clone().multiplyScalar(2))
+
+          const tangent = new THREE.Vector3(-pos.z, 0, pos.x).normalize()
+          const satModelPos = pos.clone().add(tangent.clone().multiplyScalar(0.35))
+          node.satModel.position.copy(satModelPos)
+          node.satModel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial)
+
+          node.linkLine.geometry.setFromPoints([pos, satModelPos])
+          node.label.position.copy(pos.clone().add(radial.clone().multiplyScalar(0.28)))
+
+          if (node.innerRingMesh && node.outerRingMesh) {
+            node.innerRingMesh.position.copy(pos)
+            node.innerRingMesh.lookAt(pos.clone().multiplyScalar(2))
+            node.outerRingMesh.position.copy(pos)
+            node.outerRingMesh.lookAt(pos.clone().multiplyScalar(2))
+          }
         }
       }
 
-      if (routePoints.length >= 2) {
-        const routeGeo = new THREE.BufferGeometry().setFromPoints(routePoints)
-        const routeMat = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          linewidth: 2.0,
-        })
-        routeGroup.add(new THREE.Line(routeGeo, routeMat))
+      // Update ISL links
+      if (islLineRef.current && currentSnap) {
+        const linkPositions: number[] = []
+        for (const [u, v] of currentSnap.edges) {
+          const posU = satPosMap.get(u)
+          const posV = satPosMap.get(v)
+          if (posU && posV) {
+            linkPositions.push(posU.x, posU.y, posU.z, posV.x, posV.y, posV.z)
+          }
+        }
+        islLineRef.current.geometry.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute(linkPositions, 3)
+        )
       }
-    }
-  }, [currentSnap, activeScenario, activeRoutePath, selectedClientId, selectedSatelliteId])
+
+      // Update active route
+      if (routeLineRef.current) {
+        if (activeRoutePath.length >= 2) {
+          const routePoints: THREE.Vector3[] = []
+          for (const nodeId of activeRoutePath) {
+            const gNode = activeScenario.ground_sites.find((g) => g.id === nodeId)
+            if (gNode) {
+              const [gx, gy, gz] = groundPosition(gNode.lat_deg, gNode.lon_deg)
+              routePoints.push(ecefToThree(gx, gy, gz))
+            } else {
+              const sPos = satPosMap.get(nodeId)
+              if (sPos) routePoints.push(sPos.clone())
+            }
+          }
+          routeLineRef.current.geometry.setFromPoints(routePoints)
+          routeLineRef.current.visible = true
+        } else {
+          routeLineRef.current.visible = false
+        }
+      }
+    },
+    [activeScenario, currentSnap, activeRoutePath]
+  )
+
+  // Trigger continuous position update whenever currentTime_s changes
+  useEffect(() => {
+    updateRealtimePositions(currentTime_s)
+  }, [currentTime_s, updateRealtimePositions])
 
   return (
     <div className="relative w-full h-full select-none overflow-hidden bg-[#06080d]">

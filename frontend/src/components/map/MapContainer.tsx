@@ -1,9 +1,9 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { PolarMapCanvas } from './PolarMapCanvas'
 import { Globe3DView } from './Globe3DView'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { RotateCcw, ChevronLeft, ChevronRight, Radio, ShieldCheck, AlertTriangle, BarChart2 } from 'lucide-react'
+import { RotateCcw, BarChart2 } from 'lucide-react'
 
 export const MapContainer: React.FC = () => {
   const {
@@ -13,9 +13,10 @@ export const MapContainer: React.FC = () => {
     simulationResult,
     currentTime_s,
     setTime,
-    stepTime,
     isPlaying,
     togglePlay,
+    playbackSpeed,
+    setPlaybackSpeed,
     selectedClientId,
   } = useSimulationStore()
 
@@ -26,13 +27,34 @@ export const MapContainer: React.FC = () => {
   const currentSnap =
     simulationResult?.snapshots[Math.min(idx, (simulationResult?.snapshots.length || 1) - 1)]
 
-  const activeSatsCount = currentSnap?.satellites.filter((s) => s.active).length || 0
-  const totalSatsCount = activeScenario?.design.satellites.length || 48
-  const activeEdgesCount = currentSnap?.edges.length || 0
+  const maxHorizon = simulationResult?.horizon_s || activeScenario?.environment.horizon_s || 86400
+  const progressPct = Math.min(100, Math.max(0, (currentTime_s / maxHorizon) * 100))
 
-  const clientData = simulationResult?.clients.find((c) => c.client_id === selectedClientId)
-  const currentTimeline = clientData?.timeline.find((t) => t.t_s === idx * step)
-  const isConnected = currentTimeline?.status === 'connected'
+  // Real-time animation ticker for continuous, smooth orbital timeline
+  useEffect(() => {
+    if (!isPlaying) return
+
+    let lastTime = performance.now()
+    let frameId: number
+
+    const tick = (now: number) => {
+      const dt = (now - lastTime) / 1000 // real seconds elapsed
+      lastTime = now
+
+      const horizon = simulationResult?.horizon_s || activeScenario?.environment.horizon_s || 86400
+      const current = useSimulationStore.getState().currentTime_s
+      let next = current + dt * playbackSpeed
+      if (next >= horizon) {
+        next = 0 // loop
+      }
+      setTime(next)
+
+      frameId = requestAnimationFrame(tick)
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frameId)
+  }, [isPlaying, playbackSpeed, simulationResult, activeScenario, setTime])
 
   // Format UTC Clock
   const formatUTC = (secs: number) => {
@@ -51,9 +73,9 @@ export const MapContainer: React.FC = () => {
         {viewMode === '2d' ? <PolarMapCanvas /> : <Globe3DView />}
       </div>
 
-      {/* Floating Bottom Separate Buttons (Discrete floating dark grey buttons) */}
+      {/* Floating Bottom Toolbar with Timeline Slider and Speed Controls */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 select-none font-mono pointer-events-auto">
-        {/* Segmented 2D / 3D Toggle */}
+        {/* 1. Segmented 2D / 3D Toggle */}
         <div
           style={{
             background: 'rgba(18, 21, 28, 0.85)',
@@ -103,31 +125,18 @@ export const MapContainer: React.FC = () => {
           </button>
         </div>
 
-        {/* Playback Controls (Discrete micro-buttons) */}
-        <button
-          onClick={() => stepTime(-1)}
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-          }}
-          className="p-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
-          title="Шаг назад (-120с)"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Button: ((•)) Live (Pale red desaturated accent) */}
+        {/* 2. Play/Pause: ((•)) Live in pale red */}
         <button
           onClick={togglePlay}
           style={{
             background: isPlaying
-              ? 'rgba(54, 26, 30, 0.70)'
+              ? 'rgba(54, 26, 30, 0.75)'
               : 'rgba(38, 20, 24, 0.65)',
             border: '1px solid rgba(210, 130, 138, 0.38)',
             boxShadow: '0 0 10px rgba(210, 130, 138, 0.15), 0 4px 12px rgba(0, 0, 0, 0.5)',
             color: '#eed2d5',
           }}
-          className="px-4 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md flex items-center gap-1.5 transition-all hover:brightness-110"
+          className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md flex items-center gap-1.5 transition-all hover:brightness-110"
         >
           <span className="relative flex h-2 w-2">
             <span
@@ -142,43 +151,82 @@ export const MapContainer: React.FC = () => {
           <span>{isPlaying ? 'PAUSE' : '((•)) Live'}</span>
         </button>
 
-        <button
-          onClick={() => stepTime(1)}
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-          }}
-          className="p-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
-          title="Шаг вперед (+120с)"
-        >
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onClick={() => setTime(0)}
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-          }}
-          className="p-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
-          title="В начало (Reset)"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Button: UTC Clock (Dark grey capsule with side rim lighting) */}
+        {/* 3. Speed Multiplier Switcher (1x, 2x, 5x, 10x) */}
         <div
           style={{
             background: 'rgba(18, 21, 28, 0.85)',
             border: '1px solid rgba(255, 255, 255, 0.14)',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.5)',
           }}
-          className="px-4 py-1.5 rounded-lg text-xs font-mono tabular-nums text-zinc-200 font-semibold tracking-wider backdrop-blur-md"
+          className="flex items-center p-0.5 rounded-lg backdrop-blur-md"
         >
-          {formatUTC(currentTime_s)}
+          {([1, 2, 5, 10] as const).map((spd) => (
+            <button
+              key={spd}
+              onClick={() => setPlaybackSpeed(spd)}
+              style={
+                playbackSpeed === spd
+                  ? {
+                      background:
+                        'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                      border: '1px solid rgba(255, 255, 255, 0.40)',
+                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+                      color: '#ffffff',
+                    }
+                  : {
+                      color: '#a1a1aa',
+                    }
+              }
+              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-bold cursor-pointer transition-all hover:text-white"
+              title={`Скорость воспроизведения ${spd}x`}
+            >
+              {spd}x
+            </button>
+          ))}
         </div>
 
-        {/* Button: Аналитика (Moved from top to bottom) */}
+        {/* 4. Timeline Slider (Ползунок вместо кнопок < и >) */}
+        <div
+          style={{
+            background: 'rgba(18, 21, 28, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            boxShadow:
+              '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
+          }}
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg backdrop-blur-md"
+        >
+          {/* Range Slider Track */}
+          <div className="relative flex items-center w-36 sm:w-48">
+            <input
+              type="range"
+              min={0}
+              max={maxHorizon}
+              step={1}
+              value={currentTime_s}
+              onChange={(e) => setTime(parseFloat(e.target.value))}
+              style={{
+                background: `linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) ${progressPct}%, rgba(255, 255, 255, 0.15) ${progressPct}%, rgba(255, 255, 255, 0.15) 100%)`,
+              }}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-white transition-all hover:brightness-125"
+            />
+          </div>
+
+          {/* Real-time Clock */}
+          <span className="text-[11px] font-mono tabular-nums text-zinc-200 font-bold tracking-wider shrink-0 min-w-[75px]">
+            {formatUTC(currentTime_s)}
+          </span>
+
+          {/* Reset button */}
+          <button
+            onClick={() => setTime(0)}
+            className="p-1 rounded-md text-zinc-400 hover:text-white cursor-pointer transition-colors"
+            title="В начало (Reset 00:00)"
+          >
+            <RotateCcw className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* 5. Button: Аналитика */}
         <button
           onClick={() => setActiveTab('compare')}
           style={{

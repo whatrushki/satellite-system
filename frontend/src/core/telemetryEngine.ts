@@ -1,4 +1,4 @@
-﻿import { Scenario, SatelliteSnapshot, SimulationResult } from './types'
+import { Scenario, SatelliteSnapshot, SimulationResult } from './types'
 import { R, MU, OMEGA, groundPosition, computePositions } from './geometryEngine'
 
 export const C_LIGHT = 299792.458 // Speed of light [km/s]
@@ -132,15 +132,14 @@ export function computeSatelliteThermalPower(
   const baseShadowTemp = -12.4 - ((satNum * 3) % 4) * 0.8
   const payloadTempC = parseFloat((baseShadowTemp + (baseSunTemp - baseShadowTemp) * sunlitFactor).toFixed(1))
 
-  // Battery State of Charge (SOC)
-  // Recharges to ~98-100% in sun, discharges to ~80-84% in eclipse
-  const batterySocPct = Math.min(
-    100,
-    Math.max(
-      76,
-      Math.round(98 - factor * (16 + (satNum % 3) * 2))
-    )
-  )
+  // Electrochemical Battery Model:
+  // Space-grade 2400 Wh LiFePO4 battery pack, 380W bus consumption.
+  // Full eclipse traversal (~35 min) consumes 380W * (35/60)h = 221.7 Wh (9.24% DoD).
+  // Battery discharges from 100% down to ~90.8% in total umbra, and recharges to 100% in sunlight.
+  const BATTERY_CAPACITY_WH = 2400
+  const maxEclipseDrainWh = powerLoadWatts * (2100 / 3600) // ~213-240 Wh
+  const maxDoDPct = (maxEclipseDrainWh / BATTERY_CAPACITY_WH) * 100
+  const batterySocPct = parseFloat(Math.min(100, Math.max(88, 100.0 - factor * maxDoDPct)).toFixed(1))
 
   // Transmit power
   const txPowerDbm = 24.0 // 250 mW SSPA output

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
+import { computePositions } from '@/core/geometryEngine'
 
 export const PolarMapCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -170,9 +171,13 @@ export const PolarMapCanvas: React.FC = () => {
       }
     }
 
-    // 4. Inter-Satellite Links (ISL Mesh)
+    // 4. Inter-Satellite Links (ISL Mesh) and Real-Time Satellites
+    const liveSats = activeScenario
+      ? computePositions(activeScenario, currentTime_s)
+      : currentSnap?.satellites || []
+
     if (currentSnap && activeScenario) {
-      const satMap = new Map(currentSnap.satellites.map((s) => [s.id, s]))
+      const satMap = new Map(liveSats.map((s) => [s.id, s]))
 
       ctx.save()
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.22)'
@@ -237,7 +242,7 @@ export const PolarMapCanvas: React.FC = () => {
       }
 
       // 6. Draw Satellites (Clean matte circles)
-      for (const sat of currentSnap.satellites) {
+      for (const sat of liveSats) {
         const rSat = Math.hypot(sat.x_km, sat.y_km, sat.z_km)
         const lat = Math.asin(sat.z_km / rSat) * (180 / Math.PI)
         const lon = Math.atan2(sat.y_km, sat.x_km) * (180 / Math.PI)

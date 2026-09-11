@@ -30,7 +30,7 @@ interface SimulationState {
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   currentTime_s: 0,
   isPlaying: false,
-  playbackSpeed: 60,
+  playbackSpeed: 1,
   selectedClientId: 'C65',
   selectedSatelliteId: null,
   viewMode: '3d',
@@ -44,7 +44,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       set({ currentTime_s: t })
       return
     }
-    const maxT = res.horizon_s - res.step_s
+    const maxT = res.horizon_s
     const clamped = Math.max(0, Math.min(maxT, t))
     set({ currentTime_s: clamped })
   },
