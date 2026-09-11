@@ -1,7 +1,13 @@
 import React, { useState, useMemo } from 'react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { AlertTriangle, ArrowRight } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Sun, Moon } from 'lucide-react'
+import {
+  computeSatelliteThermalPower,
+  computeLinkBudget,
+  computeHistoricalSignalBars,
+} from '@/core/telemetryEngine'
+import { groundPosition } from '@/core/geometryEngine'
 
 // Satellite codenames mapping
 const CODENAMES: Record<string, string> = {
@@ -74,13 +80,34 @@ export const SpaceXTelemetryPanel: React.FC = () => {
   const satName = CODENAMES[satId] || `КА ${satId}`
   const isSatFailed = satObj ? !satObj.active : false
 
-  // 30 bars representing signal history over the last 30 minutes
+  // Real Thermal & Electrical Power Telemetry
+  const thermalPower = useMemo(() => {
+    if (!satObj || !activeScenario) return null
+    return computeSatelliteThermalPower(satObj, activeScenario, currentTime_s)
+  }, [satObj, activeScenario, currentTime_s])
+
+  // Real Ground Client Site Position & Link Budget
+  const clientSite = useMemo(() => {
+    return activeScenario?.ground_sites.find((g) => g.id === selectedClientId) || null
+  }, [activeScenario, selectedClientId])
+
+  const linkBudget = useMemo(() => {
+    if (!satObj || !clientSite || !activeScenario) return null
+    const gPos = groundPosition(clientSite.lat_deg, clientSite.lon_deg)
+    return computeLinkBudget(
+      satObj,
+      gPos,
+      24.5,
+      satObj.active,
+      activeScenario.environment.min_elevation_deg
+    )
+  }, [satObj, clientSite, activeScenario])
+
+  // Real 30-bar historical signal array based on orbital geometry over past 30 min
   const barHeights = useMemo(() => {
-    return [
-      38, 44, 52, 50, 68, 74, 82, 78, 90, 92, 94, 89, 82, 86, 91, 94, 92, 88, 76, 82, 88, 92, 94,
-      92, 90, 86, 91, 93, 94, 94,
-    ]
-  }, [])
+    if (!activeScenario) return Array(30).fill(0)
+    return computeHistoricalSignalBars(satId, selectedClientId, activeScenario, currentTime_s)
+  }, [satId, selectedClientId, activeScenario, currentTime_s])
 
   // Emergency Dijkstra failure response trigger
   const handleRespondAnomaly = () => {
@@ -113,12 +140,12 @@ export const SpaceXTelemetryPanel: React.FC = () => {
 
   const planeLabel = satObj?.plane_id ? `PLANE ${satObj.plane_id.replace('P', '')}` : 'PLANE 1'
   const altKm = activeScenario.environment.altitude_km || 550
-  const routeHops = currentTimeline?.path || [selectedClientId, 'S01', 'S02', 'G_MUR']
-  const routeDist = currentTimeline?.distance_km || 2480
+  const routeHops = isConnected && currentTimeline?.path ? currentTimeline.path : [selectedClientId, 'LINK DOWN']
+  const routeDist = isConnected && currentTimeline?.distance_km != null ? currentTimeline.distance_km : 0
   const routeLatency =
-    currentTimeline?.distance_km != null
+    isConnected && currentTimeline?.distance_km != null
       ? ((currentTimeline.distance_km / 299.792) + (currentTimeline.hops || 1) * 2).toFixed(1)
-      : '12.3'
+      : 'N/A'
 
   return (
     <div
@@ -173,13 +200,19 @@ export const SpaceXTelemetryPanel: React.FC = () => {
         <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-sans">
             <span className="text-[11px] font-bold text-zinc-300">Signal strength</span>
-            <span className="text-zinc-400 font-mono text-[10px]">-1.23k • 11 dBm</span>
+            <span className="text-zinc-400 font-mono text-[10px]">
+              {linkBudget && linkBudget.inLineOfSight
+                ? `${linkBudget.dopplerShiftKhz >= 0 ? '+' : ''}${linkBudget.dopplerShiftKhz} kHz • ${linkBudget.rxPowerDbm} dBm`
+                : isSatFailed
+                ? 'OFFLINE • -120 dBm'
+                : 'NO CARRIER • -120 dBm'}
+            </span>
           </div>
 
-          {/* Big Digit: 94% in pure white */}
+          {/* Big Digit: Real link quality % */}
           <div className="flex items-baseline justify-between">
             <span className="text-[18px] font-black text-white font-sans tracking-tight">
-              {isSatFailed ? '0%' : '94%'}
+              {isSatFailed ? '0%' : linkBudget?.inLineOfSight ? `${linkBudget.signalPct}%` : '0%'}
             </span>
             <span className="text-[9px] text-zinc-400 uppercase font-mono">Carrier: 24.5 GHz</span>
           </div>
@@ -187,7 +220,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           {/* The 30-Bar Histogram (Monochrome bars) */}
           <div className="h-12 w-full flex items-end justify-between pt-1">
             {barHeights.map((val, i) => {
-              const h = isSatFailed ? 4 : (val / 100) * 44
+              const h = isSatFailed ? 4 : Math.max(4, (val / 100) * 44)
               const isRecent = i >= 24
               return (
                 <div
@@ -213,8 +246,15 @@ export const SpaceXTelemetryPanel: React.FC = () => {
 
         {/* 4. Card 2: Payload Diagnostics (Monochrome curves) */}
         <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2 font-sans">
-          <div className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
-            Payload diagnostics
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-bold text-zinc-300 uppercase tracking-wider">
+              Payload diagnostics
+            </span>
+            {thermalPower && (
+              <span className="text-[9px] font-mono text-zinc-400 uppercase">
+                {thermalPower.isEclipse ? '● ECLIPSE' : '○ SUNLIT'}
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -230,7 +270,11 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   strokeWidth="1.5"
                 />
               </svg>
-              <span className="text-[12px] font-black text-white font-mono">+19.4°C</span>
+              <span className="text-[12px] font-black text-white font-mono">
+                {thermalPower
+                  ? `${thermalPower.payloadTempC >= 0 ? '+' : ''}${thermalPower.payloadTempC}°C`
+                  : '+19.4°C'}
+              </span>
             </div>
 
             <div className="bg-black/40 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
@@ -243,7 +287,9 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   strokeWidth="1.5"
                 />
               </svg>
-              <span className="text-[12px] font-black text-white font-mono">24.0 dBm</span>
+              <span className="text-[12px] font-black text-white font-mono">
+                {thermalPower ? `${thermalPower.txPowerDbm.toFixed(1)} dBm` : '0.0 dBm'}
+              </span>
             </div>
           </div>
         </div>
@@ -266,7 +312,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-[#c8b276]" />
                 <span className="text-[12px] font-bold text-zinc-100">
-                  {isSatFailed ? 'Critical Offline Alert' : 'Anomaly detected'}
+                  Critical Offline Alert
                 </span>
               </div>
               <button
@@ -284,13 +330,13 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                 <div className="flex justify-between text-zinc-300">
                   <span>Orbit deviation:</span>
                   <b className="text-zinc-200">
-                    {isSatFailed ? '100%' : '12%'}
+                    {thermalPower ? `${thermalPower.orbitDeviationPct}%` : isSatFailed ? '100%' : '8%'}
                   </b>
                 </div>
                 <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
                     style={{
-                      width: isSatFailed ? '100%' : '12%',
+                      width: `${thermalPower ? thermalPower.orbitDeviationPct : isSatFailed ? 100 : 8}%`,
                       backgroundColor: isSatFailed ? '#c8b276' : '#ffffff',
                     }}
                     className="h-full rounded-xs transition-all duration-300"
@@ -301,11 +347,16 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <div>
                 <div className="flex justify-between text-zinc-300">
                   <span>Thermal threshold:</span>
-                  <b className="text-zinc-200">98%</b>
+                  <b className="text-zinc-200">
+                    {thermalPower ? `${thermalPower.thermalThresholdPct}%` : '58%'}
+                  </b>
                 </div>
                 <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
-                    style={{ width: '98%', backgroundColor: '#c8b276' }}
+                    style={{
+                      width: `${thermalPower ? thermalPower.thermalThresholdPct : 58}%`,
+                      backgroundColor: (thermalPower?.thermalThresholdPct || 0) > 85 ? '#c8b276' : '#ffffff',
+                    }}
                     className="h-full rounded-xs"
                   />
                 </div>
@@ -314,11 +365,16 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <div>
                 <div className="flex justify-between text-zinc-300">
                   <span>Power budget:</span>
-                  <b className="text-zinc-300">44%</b>
+                  <b className="text-zinc-300">
+                    {thermalPower ? `${thermalPower.powerBudgetPct}%` : '0%'}
+                  </b>
                 </div>
                 <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
-                    style={{ width: '44%', backgroundColor: '#71717a' }}
+                    style={{
+                      width: `${thermalPower ? thermalPower.powerBudgetPct : 0}%`,
+                      backgroundColor: '#71717a',
+                    }}
                     className="h-full rounded-xs"
                   />
                 </div>
@@ -375,7 +431,11 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   : 'bg-zinc-800 text-zinc-400 border-white/15'
               }`}
             >
-              {isConnected ? `${currentTimeline?.hops} HOPS` : currentTimeline?.reason || 'LINK OK'}
+              {isConnected
+                ? `${currentTimeline?.hops} HOPS`
+                : currentTimeline?.reason && currentTimeline.reason !== 'NONE'
+                ? currentTimeline.reason
+                : 'LINK DOWN'}
             </span>
           </div>
 

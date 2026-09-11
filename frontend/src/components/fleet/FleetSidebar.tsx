@@ -3,6 +3,12 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { OrbitConfigurator } from '@/components/sidebar/OrbitConfigurator'
 import { OutageManager } from '@/components/sidebar/OutageManager'
+import {
+  computeSatelliteThermalPower,
+  computeLinkBudget,
+  computeOrbitalPassTimer,
+} from '@/core/telemetryEngine'
+import { groundPosition } from '@/core/geometryEngine'
 
 // Satellite codenames mapping for realistic mission feel
 const CODENAMES: Record<string, string> = {
@@ -58,6 +64,12 @@ export const FleetSidebar: React.FC = () => {
     return simulationResult?.clients.find((c) => c.client_id === selectedClientId)
   }, [simulationResult, selectedClientId])
 
+  const clientPos = useMemo(() => {
+    const c = activeScenario?.ground_sites.find((g) => g.id === selectedClientId)
+    if (!c) return null
+    return groundPosition(c.lat_deg, c.lon_deg)
+  }, [activeScenario, selectedClientId])
+
   const activeRoutePath = useMemo(() => {
     const currentTimelineItem = clientData?.timeline.find((item) => item.t_s === idx * step)
     return currentTimelineItem?.path || []
@@ -77,12 +89,10 @@ export const FleetSidebar: React.FC = () => {
 
   const totalSatsCount = activeScenario?.design.satellites.length ?? 48
 
-  // Format orbit timer
-  const formatTimer = (satIdx: number) => {
-    const totalSec = (currentTime_s + satIdx * 370) % 5700
-    const m = Math.floor(totalSec / 60)
-    const s = Math.floor(totalSec % 60)
-    return `00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  // Format real orbit pass timer using Keplerian mean motion
+  const formatTimer = (satId: string) => {
+    if (!activeScenario) return '00:00:00'
+    return computeOrbitalPassTimer(satId, activeScenario, currentTime_s)
   }
 
   // Graceful fallback render if data is loading, preserving container shell
@@ -196,12 +206,26 @@ export const FleetSidebar: React.FC = () => {
               const isInRoute = activeRoutePath.includes(sat.id)
 
               const satAlt = activeScenario.environment.altitude_km || 550
-              const signalPct = sat.active
-                ? 90 + ((parseInt(sat.id.replace(/\D/g, '') || '1', 10) * 7) % 9)
-                : 0
-              const batteryPct = sat.active
-                ? 82 + ((parseInt(sat.id.replace(/\D/g, '') || '1', 10) * 11) % 17)
-                : 0
+              const thermalPower = computeSatelliteThermalPower(sat, activeScenario, currentTime_s)
+              const batteryPct = sat.active ? thermalPower.batterySocPct : 0
+
+              let signalPct = 0
+              if (sat.active) {
+                if (clientPos) {
+                  const lb = computeLinkBudget(
+                    sat,
+                    clientPos,
+                    24.5,
+                    sat.active,
+                    activeScenario.environment.min_elevation_deg
+                  )
+                  signalPct = lb.inLineOfSight
+                    ? lb.signalPct
+                    : Math.max(12, Math.round(18 + Math.sin(currentTime_s * 0.01 + i) * 6))
+                } else {
+                  signalPct = 92
+                }
+              }
 
               const satNum = parseInt(sat.id.replace(/\D/g, '') || '1', 10)
               const satPhotoUrl = `/satellites/sat_${((satNum - 1) % 3) + 1}.jpg`
@@ -270,7 +294,7 @@ export const FleetSidebar: React.FC = () => {
 
                       <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono mt-1">
                         <span>Alt: {satAlt} km</span>
-                        <span>{formatTimer(i)}</span>
+                        <span>{formatTimer(sat.id)}</span>
                       </div>
                     </div>
                   </div>
