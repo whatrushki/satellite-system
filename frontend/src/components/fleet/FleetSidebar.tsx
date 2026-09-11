@@ -43,9 +43,6 @@ export const FleetSidebar: React.FC = () => {
     selectedClientId,
   } = useSimulationStore()
 
-  const [missionMode, setMissionMode] = useState<'Relay' | 'Tracking' | 'Inspection' | 'Standby'>(
-    'Relay'
-  )
   const [planeFilter, setPlaneFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL')
   const [activeTab, setActiveTab] = useState<'fleet' | 'orbits' | 'outages'>('fleet')
 
@@ -183,54 +180,8 @@ export const FleetSidebar: React.FC = () => {
 
         {activeTab === 'fleet' && (
           <>
-            {/* 3. Mission mode header & 4-grid buttons */}
-            <div className="mt-2.5">
-              <div className="text-[11px] font-semibold text-zinc-300 font-sans mb-1.5">
-                Mission mode
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {(['Tracking', 'Inspection', 'Relay', 'Standby'] as const).map((mode) => {
-                  const isActive = missionMode === mode
-                  return (
-                    <button
-                      key={mode}
-                      onClick={() => setMissionMode(mode)}
-                      style={
-                        isActive
-                          ? {
-                              background:
-                                'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                              border: '1px solid rgba(255, 255, 255, 0.40)',
-                              boxShadow:
-                                'inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4)',
-                              color: '#ffffff',
-                              fontWeight: 700,
-                              borderRadius: '8px',
-                              padding: '5px 8px',
-                              fontSize: '11px',
-                              cursor: 'pointer',
-                            }
-                          : {
-                              background: 'rgba(255, 255, 255, 0.03)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              color: '#a1a1aa',
-                              borderRadius: '8px',
-                              padding: '5px 8px',
-                              fontSize: '11px',
-                              cursor: 'pointer',
-                            }
-                      }
-                      className="font-sans transition-all text-center hover:text-white"
-                    >
-                      {mode}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
             {/* Plane Filter Pills (Monochrome) */}
-            <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center gap-1 mt-2.5">
               {(['ALL', 'P1', 'P2', 'P3'] as const).map((p) => (
                 <button
                   key={p}

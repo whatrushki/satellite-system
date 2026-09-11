@@ -248,8 +248,8 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* 5. Card 3: Anomaly Detected Box (Translucent dark grey with pale straw accent) */}
-        {!alertDismissed && (
+        {/* 5. Card 3: Anomaly Detected Box (Translucent dark grey with pale straw accent - shown on failure) */}
+        {!alertDismissed && isSatFailed && (
           <div
             style={{
               background: 'rgba(20, 22, 28, 0.65)',

@@ -52,68 +52,55 @@ export const MapContainer: React.FC = () => {
 
       {/* Floating Bottom Separate Buttons (Discrete floating dark grey buttons) */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 select-none font-mono pointer-events-auto">
-        {/* Button: 2D */}
-        <button
-          onClick={() => setViewMode('2d')}
-          style={
-            viewMode === '2d'
-              ? {
-                  background:
-                    'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.40)',
-                  boxShadow:
-                    '0 4px 14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
-                  color: '#ffffff',
-                }
-              : {
-                  background: 'rgba(18, 21, 28, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#a1a1aa',
-                }
-          }
-          className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md transition-all hover:text-white"
-        >
-          2D
-        </button>
-
-        {/* Button: 3D */}
-        <button
-          onClick={() => setViewMode('3d')}
-          style={
-            viewMode === '3d'
-              ? {
-                  background:
-                    'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.40)',
-                  boxShadow:
-                    '0 4px 14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
-                  color: '#ffffff',
-                }
-              : {
-                  background: 'rgba(18, 21, 28, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#a1a1aa',
-                }
-          }
-          className="px-4 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md transition-all hover:text-white"
-        >
-          3D
-        </button>
-
-        {/* Button: Ground */}
-        <button
-          onClick={() => {
-            alert('Наземный комплекс: G_MUR (Шлюз Мурманска), C65, C70, C72 (Абоненты СМП)')
-          }}
+        {/* Segmented 2D / 3D Toggle */}
+        <div
           style={{
             background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: '#a1a1aa',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            boxShadow:
+              '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
           }}
-          className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-medium cursor-pointer backdrop-blur-md transition-all hover:text-white"
+          className="flex items-center p-0.5 rounded-lg backdrop-blur-md"
         >
-          Ground
-        </button>
+          <button
+            onClick={() => setViewMode('2d')}
+            style={
+              viewMode === '2d'
+                ? {
+                    background:
+                      'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.40)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+                    color: '#ffffff',
+                  }
+                : {
+                    color: '#a1a1aa',
+                  }
+            }
+            className="px-3 py-1 rounded-md text-xs font-sans font-bold cursor-pointer transition-all hover:text-white"
+          >
+            2D
+          </button>
+          <button
+            onClick={() => setViewMode('3d')}
+            style={
+              viewMode === '3d'
+                ? {
+                    background:
+                      'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.40)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+                    color: '#ffffff',
+                  }
+                : {
+                    color: '#a1a1aa',
+                  }
+            }
+            className="px-3 py-1 rounded-md text-xs font-sans font-bold cursor-pointer transition-all hover:text-white"
+          >
+            3D
+          </button>
+        </div>
 
         {/* Playback Controls (Discrete micro-buttons) */}
         <button

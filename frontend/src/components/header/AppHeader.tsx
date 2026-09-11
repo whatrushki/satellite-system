@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { Download, Upload, RotateCcw } from 'lucide-react'
@@ -9,21 +9,11 @@ interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport }) => {
-  const { activeScenario, activeScenarioId, loadDefaultScenario, setLaunchStage, resetToOriginal } =
-    useScenarioStore()
-  const { setActiveTab, recalculate, setViewMode } = useSimulationStore()
-
-  const [activeNavPill, setActiveNavPill] = useState<
-    'Overview' | 'Fleet' | 'Coverage' | 'Telemetry' | 'Control'
-  >('Overview')
+  const { activeScenarioId, loadDefaultScenario, resetToOriginal } = useScenarioStore()
+  const { activeTab, setActiveTab, recalculate, setViewMode } = useSimulationStore()
 
   const handleScenarioChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     await loadDefaultScenario(e.target.value)
-    recalculate()
-  }
-
-  const handleStageChange = (stage: number) => {
-    setLaunchStage(stage)
     recalculate()
   }
 
@@ -32,25 +22,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
     recalculate()
   }
 
-  const handleNavClick = (pill: 'Overview' | 'Fleet' | 'Coverage' | 'Telemetry' | 'Control') => {
-    setActiveNavPill(pill)
-    if (pill === 'Control') {
-      setActiveTab('compare')
-    } else {
-      setActiveTab('dashboard')
-      if (pill === 'Coverage') {
-        setViewMode('2d')
-      } else if (pill === 'Overview') {
-        setViewMode('3d')
-      }
-    }
-  }
-
-  const currentStage = activeScenario?.design.launch_stage || 3
-
   return (
     <header className="absolute top-4 left-0 right-0 z-30 pointer-events-none flex items-center justify-between px-5 select-none font-sans">
-      {/* Left minimal branding */}
+      {/* 1. Left minimal branding */}
       <div className="pointer-events-auto flex items-center gap-2 bg-[#10131a]/80 backdrop-blur-md border border-white/12 rounded-full px-3.5 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.5),-1px_0_8px_rgba(255,255,255,0.04),1px_0_8px_rgba(255,255,255,0.04)]">
         <span className="text-[12px] font-black tracking-[0.25em] text-white uppercase font-sans">
           SPACEX
@@ -61,31 +35,37 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
         </span>
       </div>
 
-      {/* Center Sci-Fi Framed Buttons (Framed, no background, translucent on hover) */}
-      <div className="pointer-events-auto flex items-center gap-2">
-        {(['Overview', 'Fleet', 'Coverage', 'Telemetry', 'Control'] as const).map((item) => {
-          const isActive = activeNavPill === item
-          return (
-            <button
-              key={item}
-              onClick={() => handleNavClick(item)}
-              className={`px-3.5 py-1 text-xs font-sans tracking-wider rounded-md border transition-all cursor-pointer flex items-center gap-1.5 backdrop-blur-sm ${
-                isActive
-                  ? 'bg-white/15 border-white/45 text-white font-semibold shadow-[0_0_15px_rgba(255,255,255,0.15)]'
-                  : 'bg-transparent border-white/20 text-zinc-300 hover:bg-white/10 hover:border-white/40 hover:text-white'
-              }`}
-            >
-              <span className="text-[9px] text-zinc-500 font-mono">·</span>
-              <span>{item}</span>
-              <span className="text-[9px] text-zinc-500 font-mono">·</span>
-            </button>
-          )
-        })}
+      {/* 2. Center Mode Switch: 3D Orbit View vs Analytics & Comparison (Clean segmented toggle) */}
+      <div className="pointer-events-auto flex items-center bg-[#10131a]/80 backdrop-blur-md border border-white/12 rounded-full p-1 shadow-[0_4px_16px_rgba(0,0,0,0.5),-1px_0_8px_rgba(255,255,255,0.04),1px_0_8px_rgba(255,255,255,0.04)] gap-1">
+        <button
+          onClick={() => {
+            setActiveTab('dashboard')
+            setViewMode('3d')
+          }}
+          className={`px-4 py-1 text-xs font-sans rounded-full transition-all cursor-pointer font-bold ${
+            activeTab === 'dashboard'
+              ? 'bg-white text-zinc-950 shadow-sm'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          3D Орбиты
+        </button>
+        <button
+          onClick={() => setActiveTab('compare')}
+          className={`px-4 py-1 text-xs font-sans rounded-full transition-all cursor-pointer font-bold ${
+            activeTab === 'compare'
+              ? 'bg-white text-zinc-950 shadow-sm'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          Аналитика и сопоставление
+        </button>
       </div>
 
-      {/* Right Controls (Monochrome dark grey floating controls) */}
+      {/* 3. Right Controls (Minimalist scenario selector and export) */}
       <div className="pointer-events-auto flex items-center gap-2 text-xs font-mono">
-        <div className="bg-[#10131a]/80 backdrop-blur-md border border-white/12 rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-[11px] shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+        {/* Scenario selector */}
+        <div className="bg-[#10131a]/80 backdrop-blur-md border border-white/12 rounded-xl px-2.5 py-1.5 flex items-center text-[11px] shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
           <select
             value={activeScenarioId}
             onChange={handleScenarioChange}
@@ -111,42 +91,29 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
           </select>
         </div>
 
-        <div className="bg-[#10131a]/80 backdrop-blur-md border border-white/12 rounded-lg p-0.5 flex items-center text-[10px] shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
-          {[1, 2, 3].map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStageChange(s)}
-              className={`px-2 py-0.5 rounded cursor-pointer font-bold transition-colors ${
-                currentStage === s
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Этап {s}
-            </button>
-          ))}
+        {/* Action utility icons (Reset & Import) */}
+        <div className="flex items-center gap-1 bg-[#10131a]/80 backdrop-blur-md border border-white/12 rounded-xl p-0.5 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+          <button
+            onClick={handleReset}
+            className="text-zinc-400 hover:text-white p-1.5 rounded-lg cursor-pointer transition-colors"
+            title="Сброс к исходному состоянию"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onOpenImport}
+            className="text-zinc-400 hover:text-white p-1.5 rounded-lg cursor-pointer transition-colors"
+            title="Загрузить JSON сценария"
+          >
+            <Upload className="w-3.5 h-3.5" />
+          </button>
         </div>
 
-        <button
-          onClick={handleReset}
-          className="bg-[#10131a]/80 backdrop-blur-md border border-white/12 hover:border-white/30 text-zinc-300 p-1.5 rounded-lg cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] transition-colors"
-          title="Сброс (Reset)"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onClick={onOpenImport}
-          className="bg-[#10131a]/80 backdrop-blur-md border border-white/12 hover:border-white/30 text-zinc-300 p-1.5 rounded-lg cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] transition-colors"
-          title="Импорт JSON"
-        >
-          <Upload className="w-3.5 h-3.5" />
-        </button>
-
+        {/* Primary Export Button */}
         <button
           onClick={onOpenExport}
-          className="bg-white/10 hover:bg-white/20 border border-white/25 text-white px-3 py-1 rounded-lg text-xs font-sans font-bold flex items-center gap-1 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all"
-          title="Экспорт результата"
+          className="bg-white text-zinc-950 hover:bg-zinc-200 px-3.5 py-1.5 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] transition-all"
+          title="Экспорт официального результата (cosmo-A-result-1.0)"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
