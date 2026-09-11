@@ -388,7 +388,7 @@ export const Globe3DView: React.FC = () => {
 
       const pinGeo = new THREE.CylinderGeometry(0.02, 0.05, 0.15, 8)
       const pinMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xfbbf24 : 0xd97706) : 0xd4d4d8,
+        color: isClient ? (isSelected ? 0xffffff : 0xa1a1aa) : 0xd4d4d8,
       })
       const pinMesh = new THREE.Mesh(pinGeo, pinMat)
       pinMesh.position.copy(pos)
@@ -397,7 +397,7 @@ export const Globe3DView: React.FC = () => {
 
       const dotGeo = new THREE.SphereGeometry(isClient ? 0.08 : 0.11, 10, 10)
       const dotMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xfde68a : 0xf59e0b) : 0xf4f4f5,
+        color: isClient ? (isSelected ? 0xffffff : 0xd4d4d8) : 0xffffff,
       })
       const dotMesh = new THREE.Mesh(dotGeo, dotMat)
       dotMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.12)))
@@ -408,14 +408,14 @@ export const Globe3DView: React.FC = () => {
 
     const satPosMap = new Map<string, THREE.Vector3>()
 
-    // 2. Satellites (48 Satellites: silver-white nodes, soft yellow warning for outages)
+    // 2. Satellites (48 Satellites: silver-white nodes, soft red for outages)
     const satGeo = new THREE.SphereGeometry(0.12, 16, 16)
     for (const sat of currentSnap.satellites) {
       const pos = ecefToThree(sat.x_km, sat.y_km, sat.z_km)
       satPosMap.set(sat.id, pos)
 
       let color = 0xe4e4e7
-      if (!sat.active) color = 0xfbbf24 // Soft amber/yellow for outages (предупреждения)
+      if (!sat.active) color = 0xf87171 // Soft red for outages
       if (activeRoutePath.includes(sat.id)) color = 0xffffff
 
       const isSelected = sat.id === selectedSatelliteId

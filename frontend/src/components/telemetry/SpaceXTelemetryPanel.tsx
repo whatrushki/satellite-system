@@ -126,15 +126,16 @@ export const SpaceXTelemetryPanel: React.FC = () => {
         width: '300px',
         height: '100%',
         borderRadius: '20px',
-        background: 'rgba(16, 19, 26, 0.85)',
+        background: 'rgba(15, 18, 24, 0.40)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
         boxShadow:
-          '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          '0 8px 32px rgba(0, 0, 0, 0.45), -1px 0 10px rgba(255, 255, 255, 0.03), 1px 0 10px rgba(255, 255, 255, 0.03)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
       }}
-      className="backdrop-blur-xl select-none font-mono shadow-2xl shrink-0"
+      className="backdrop-blur-[4px] select-none font-mono shadow-2xl shrink-0"
     >
       {/* 2. Header */}
       <div className="p-3.5 pb-2.5 border-b border-white/10 shrink-0">
@@ -156,7 +157,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
 
           {/* Status Pill: [ Nominal ] */}
           {isSatFailed ? (
-            <span className="bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
+            <span className="bg-zinc-800 border border-white/20 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
               Offline
             </span>
           ) : (
@@ -183,7 +184,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
             <span className="text-[9px] text-zinc-400 uppercase font-mono">Carrier: 24.5 GHz</span>
           </div>
 
-          {/* The 30-Bar Histogram (Monochrome bars, soft yellow if failed) */}
+          {/* The 30-Bar Histogram (Monochrome bars) */}
           <div className="h-12 w-full flex items-end justify-between pt-1">
             {barHeights.map((val, i) => {
               const h = isSatFailed ? 4 : (val / 100) * 44
@@ -196,7 +197,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                     margin: '0 1px',
                     borderRadius: '2px 2px 0 0',
                     height: `${h}px`,
-                    backgroundColor: isSatFailed ? '#d97706' : isRecent ? '#ffffff' : '#52525b',
+                    backgroundColor: isSatFailed ? '#71717a' : isRecent ? '#ffffff' : '#52525b',
                   }}
                   className="transition-all duration-200"
                 />
@@ -247,42 +248,42 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* 5. Card 3: THE AMBER ANOMALY DETECTED BOX (Soft yellow warning) */}
+        {/* 5. Card 3: Anomaly Detected Box (Translucent dark grey with pale straw accent) */}
         {!alertDismissed && (
           <div
             style={{
-              background: 'rgba(32, 24, 14, 0.70)',
-              border: '1px solid rgba(245, 158, 11, 0.35)',
+              background: 'rgba(20, 22, 28, 0.65)',
+              border: '1px solid rgba(200, 178, 118, 0.35)',
               borderRadius: '12px',
               padding: '12px',
-              backdropFilter: 'blur(16px)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(245, 158, 11, 0.08)',
+              backdropFilter: 'blur(4px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(200, 178, 118, 0.08)',
             }}
             className="space-y-2.5 font-sans transition-all"
           >
-            {/* Header: Yellow triangle warning icon + Anomaly detected + ✕ dismiss button */}
+            {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-[12px] font-bold text-amber-300">
+                <AlertTriangle className="w-4 h-4 text-[#c8b276]" />
+                <span className="text-[12px] font-bold text-zinc-100">
                   {isSatFailed ? 'Critical Offline Alert' : 'Anomaly detected'}
                 </span>
               </div>
               <button
                 onClick={() => setAlertDismissed(true)}
-                className="text-amber-300/70 hover:text-white text-xs cursor-pointer px-1 transition-colors"
+                className="text-zinc-400 hover:text-white text-xs cursor-pointer px-1 transition-colors"
                 title="Dismiss warning"
               >
                 ✕
               </button>
             </div>
 
-            {/* Progress Sliders: Orbit deviation: 12%, Thermal threshold: 98%, Power budget: 44% */}
+            {/* Progress Sliders */}
             <div className="space-y-2 text-[10px] font-mono">
               <div>
                 <div className="flex justify-between text-zinc-300">
                   <span>Orbit deviation:</span>
-                  <b className="text-amber-300">
+                  <b className="text-zinc-200">
                     {isSatFailed ? '100%' : '12%'}
                   </b>
                 </div>
@@ -290,7 +291,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   <div
                     style={{
                       width: isSatFailed ? '100%' : '12%',
-                      backgroundColor: isSatFailed ? '#d97706' : '#f59e0b',
+                      backgroundColor: isSatFailed ? '#c8b276' : '#ffffff',
                     }}
                     className="h-full rounded-xs transition-all duration-300"
                   />
@@ -300,11 +301,11 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <div>
                 <div className="flex justify-between text-zinc-300">
                   <span>Thermal threshold:</span>
-                  <b className="text-amber-300">98%</b>
+                  <b className="text-zinc-200">98%</b>
                 </div>
                 <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
-                    style={{ width: '98%', backgroundColor: '#d97706' }}
+                    style={{ width: '98%', backgroundColor: '#c8b276' }}
                     className="h-full rounded-xs"
                   />
                 </div>
@@ -345,16 +346,16 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <button
                 onClick={handleRespondAnomaly}
                 style={{
-                  background: 'rgba(245, 158, 11, 0.25)',
-                  border: '1px solid rgba(245, 158, 11, 0.50)',
-                  color: '#fef3c7',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.30)',
+                  color: '#ffffff',
                   fontSize: '11px',
                   fontWeight: 700,
                   borderRadius: '6px',
                   padding: '6px 12px',
                   cursor: 'pointer',
                 }}
-                className="hover:bg-amber-500/35 font-sans transition-all"
+                className="hover:bg-white/20 font-sans transition-all"
                 title="Initiate emergency Dijkstra reroute failure test"
               >
                 Respond
@@ -371,7 +372,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
                 isConnected
                   ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-amber-950/40 text-amber-300 border-amber-500/40'
+                  : 'bg-zinc-800 text-zinc-400 border-white/15'
               }`}
             >
               {isConnected ? `${currentTimeline?.hops} HOPS` : currentTimeline?.reason || 'LINK OK'}
@@ -388,7 +389,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   }}
                   className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors border ${
                     node === selectedClientId
-                      ? 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+                      ? 'text-white bg-white/20 border-white/35 shadow-sm'
                       : node === 'G_MUR'
                       ? 'text-zinc-200 bg-white/10 border-white/20'
                       : node === satId

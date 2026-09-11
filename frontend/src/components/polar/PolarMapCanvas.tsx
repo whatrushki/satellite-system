@@ -71,26 +71,26 @@ export const PolarMapCanvas: React.FC = () => {
       ctx.beginPath()
       ctx.arc(cx, cy, r, 0, 2 * Math.PI)
       if (lat === 66.5) {
-        // Arctic Circle highlight (crisp dashed line, no neon glow)
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'
+        // Arctic Circle highlight (crisp dashed white line)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
         ctx.setLineDash([4, 4])
         ctx.lineWidth = 1.0
       } else {
-        ctx.strokeStyle = 'rgba(71, 85, 105, 0.25)'
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
         ctx.setLineDash([])
         ctx.lineWidth = 0.75
       }
       ctx.stroke()
 
       // Lat label
-      ctx.fillStyle = lat === 66.5 ? 'rgba(56, 189, 248, 0.75)' : 'rgba(148, 163, 184, 0.45)'
+      ctx.fillStyle = lat === 66.5 ? 'rgba(255, 255, 255, 0.7)' : 'rgba(161, 161, 170, 0.45)'
       ctx.font = '9px monospace'
       ctx.fillText(lat === 66.5 ? '66.5°N (Полярный круг)' : `${lat}°N`, cx + 6, cy - r + 11)
     }
 
     // Longitude radials
     ctx.setLineDash([2, 4])
-    ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)'
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)'
     ctx.lineWidth = 0.75
     for (let lon = 0; lon < 360; lon += 30) {
       const angle = (lon - 90) * (Math.PI / 180)
@@ -102,7 +102,7 @@ export const PolarMapCanvas: React.FC = () => {
       // Longitude label
       const lx = cx + (maxRadius + 14) * Math.cos(angle)
       const ly = cy + (maxRadius + 14) * Math.sin(angle)
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.5)'
+      ctx.fillStyle = 'rgba(161, 161, 170, 0.45)'
       ctx.font = '9px monospace'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -111,7 +111,7 @@ export const PolarMapCanvas: React.FC = () => {
     }
     ctx.restore()
 
-    // 3. Ground Stations & Real 15° Elevation Cones (Clean neutral outlines, zero glow)
+    // 3. Ground Stations & Real 15° Elevation Cones (Clean neutral monochrome outlines)
     if (activeScenario) {
       const elevRadiusDeg = 15.0 // Exact central Earth angle for 10° elevation at 550 km
       for (const g of activeScenario.ground_sites) {
@@ -128,11 +128,11 @@ export const PolarMapCanvas: React.FC = () => {
         ctx.beginPath()
         ctx.arc(gx, gy, coneRadius, 0, 2 * Math.PI)
         if (isClient) {
-          ctx.fillStyle = isSelected ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.03)'
-          ctx.strokeStyle = isSelected ? 'rgba(245, 158, 11, 0.5)' : 'rgba(245, 158, 11, 0.2)'
+          ctx.fillStyle = isSelected ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)'
+          ctx.strokeStyle = isSelected ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.15)'
         } else {
-          ctx.fillStyle = 'rgba(129, 140, 248, 0.08)'
-          ctx.strokeStyle = 'rgba(129, 140, 248, 0.45)'
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
         }
         ctx.lineWidth = isSelected ? 1.5 : 0.8
         ctx.fill()
@@ -144,7 +144,7 @@ export const PolarMapCanvas: React.FC = () => {
         if (isClient) {
           ctx.beginPath()
           ctx.arc(gx, gy, isSelected ? 5.5 : 4, 0, 2 * Math.PI)
-          ctx.fillStyle = isSelected ? '#fbbf24' : '#f59e0b'
+          ctx.fillStyle = isSelected ? '#ffffff' : '#d4d4d8'
           ctx.fill()
           ctx.strokeStyle = '#090d16'
           ctx.lineWidth = 1.5
@@ -154,7 +154,7 @@ export const PolarMapCanvas: React.FC = () => {
           ctx.save()
           ctx.translate(gx, gy)
           ctx.rotate(Math.PI / 4)
-          ctx.fillStyle = '#818cf8'
+          ctx.fillStyle = '#ffffff'
           ctx.fillRect(-5, -5, 10, 10)
           ctx.strokeStyle = '#090d16'
           ctx.lineWidth = 1.5
@@ -164,7 +164,7 @@ export const PolarMapCanvas: React.FC = () => {
 
         // Label
         ctx.font = isSelected ? 'bold 11px monospace' : '10px monospace'
-        ctx.fillStyle = isSelected ? '#fde68a' : '#94a3b8'
+        ctx.fillStyle = isSelected ? '#ffffff' : '#a1a1aa'
         ctx.fillText(`${g.id} (${g.role === 'gateway' ? 'Шлюз' : 'Клиент'})`, gx + 9, gy - 5)
         ctx.restore()
       }
@@ -204,10 +204,10 @@ export const PolarMapCanvas: React.FC = () => {
       }
       ctx.restore()
 
-      // 5. Active Route Highlight (Clean Solid Emerald Vector, no neon glow)
+      // 5. Active Route Highlight (Crisp Solid White Vector)
       if (activeRoutePath.length >= 2) {
         ctx.save()
-        ctx.strokeStyle = '#10b981'
+        ctx.strokeStyle = '#ffffff'
         ctx.lineWidth = 2.0
 
         ctx.beginPath()
@@ -236,7 +236,7 @@ export const PolarMapCanvas: React.FC = () => {
         ctx.restore()
       }
 
-      // 6. Draw Satellites (Clean matte circles, no shadow glow)
+      // 6. Draw Satellites (Clean matte circles)
       for (const sat of currentSnap.satellites) {
         const rSat = Math.hypot(sat.x_km, sat.y_km, sat.z_km)
         const lat = Math.asin(sat.z_km / rSat) * (180 / Math.PI)
@@ -251,11 +251,11 @@ export const PolarMapCanvas: React.FC = () => {
 
         ctx.save()
         if (sat.active) {
-          let color = '#38bdf8' // P1
-          if (sat.plane_id === 'P2') color = '#818cf8'
-          else if (sat.plane_id === 'P3') color = '#34d399'
+          let color = '#e4e4e7' // P1 (white-silver)
+          if (sat.plane_id === 'P2') color = '#a1a1aa' // P2 (silver-zinc)
+          else if (sat.plane_id === 'P3') color = '#71717a' // P3 (zinc)
 
-          if (isInRoute) color = '#10b981'
+          if (isInRoute) color = '#ffffff'
 
           ctx.beginPath()
           ctx.arc(sx, sy, isSelected || isHovered ? 5.0 : isInRoute ? 4.2 : 3.0, 0, 2 * Math.PI)
@@ -267,12 +267,12 @@ export const PolarMapCanvas: React.FC = () => {
 
           if (isSelected || isHovered || isInRoute) {
             ctx.font = 'bold 9px monospace'
-            ctx.fillStyle = '#f8fafc'
+            ctx.fillStyle = '#ffffff'
             ctx.fillText(sat.id, sx + 6, sy - 4)
           }
         } else {
-          // Outage / Offline (Clean Red Cross)
-          ctx.strokeStyle = '#ef4444'
+          // Outage / Offline (Clean Soft Red Cross)
+          ctx.strokeStyle = '#f87171'
           ctx.lineWidth = 1.4
           const sz = 3.5
           ctx.beginPath()

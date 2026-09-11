@@ -96,15 +96,16 @@ export const FleetSidebar: React.FC = () => {
           width: '280px',
           height: '100%',
           borderRadius: '20px',
-          background: 'rgba(16, 19, 26, 0.85)',
+          background: 'rgba(15, 18, 24, 0.40)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow:
-            '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+            '0 8px 32px rgba(0, 0, 0, 0.45), -1px 0 10px rgba(255, 255, 255, 0.03), 1px 0 10px rgba(255, 255, 255, 0.03)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
         }}
-        className="p-4 flex items-center justify-center text-xs font-mono text-zinc-500 backdrop-blur-xl"
+        className="p-4 flex items-center justify-center text-xs font-mono text-zinc-500 backdrop-blur-[4px]"
       >
         <span>Loading constellation...</span>
       </div>
@@ -117,15 +118,16 @@ export const FleetSidebar: React.FC = () => {
         width: '280px',
         height: '100%',
         borderRadius: '20px',
-        background: 'rgba(16, 19, 26, 0.85)',
+        background: 'rgba(15, 18, 24, 0.40)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
         boxShadow:
-          '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          '0 8px 32px rgba(0, 0, 0, 0.45), -1px 0 10px rgba(255, 255, 255, 0.03), 1px 0 10px rgba(255, 255, 255, 0.03)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
       }}
-      className="backdrop-blur-xl select-none font-mono shadow-2xl shrink-0"
+      className="backdrop-blur-[4px] select-none font-mono shadow-2xl shrink-0"
     >
       {/* 2. Header Section */}
       <div className="p-3.5 pb-2 border-b border-white/10 shrink-0">
@@ -135,12 +137,12 @@ export const FleetSidebar: React.FC = () => {
             <h2 className="text-[14px] font-black tracking-wide text-white uppercase font-sans leading-none">
               Satellite Fleet
             </h2>
-            {/* Segmented dash line directly underneath (monochrome with soft amber warning accent) */}
+            {/* Segmented dash line directly underneath (monochrome) */}
             <div className="flex items-center gap-1 mt-1.5">
               <div className="w-5 h-[2px] bg-white rounded-full"></div>
               <div className="w-5 h-[2px] bg-white/70 rounded-full"></div>
-              <div className="w-5 h-[2px] bg-amber-400/80 rounded-full"></div>
-              <div className="w-5 h-[2px] bg-zinc-500 rounded-full"></div>
+              <div className="w-5 h-[2px] bg-white/40 rounded-full"></div>
+              <div className="w-5 h-[2px] bg-zinc-600 rounded-full"></div>
             </div>
           </div>
 
@@ -274,19 +276,19 @@ export const FleetSidebar: React.FC = () => {
                     isSelected
                       ? {
                           borderRadius: '14px',
-                          background: 'rgba(28, 33, 44, 0.85)',
+                          background: 'rgba(255, 255, 255, 0.12)',
                           border: '1px solid rgba(255, 255, 255, 0.35)',
                           boxShadow:
-                            '0 4px 16px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
+                            '0 4px 16px rgba(0, 0, 0, 0.4), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
                         }
                       : {
                           borderRadius: '14px',
                           background: isInRoute
-                            ? 'rgba(35, 40, 52, 0.75)'
-                            : 'rgba(18, 22, 30, 0.65)',
+                            ? 'rgba(255, 255, 255, 0.06)'
+                            : 'rgba(0, 0, 0, 0.35)',
                           border: isInRoute
-                            ? '1px solid rgba(255, 255, 255, 0.25)'
-                            : '1px solid rgba(255, 255, 255, 0.08)',
+                            ? '1px solid rgba(255, 255, 255, 0.22)'
+                            : '1px solid rgba(255, 255, 255, 0.07)',
                         }
                   }
                   className="p-2.5 transition-all relative overflow-hidden cursor-pointer hover:border-white/20"
@@ -347,7 +349,7 @@ export const FleetSidebar: React.FC = () => {
                           className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-bold uppercase leading-none border ${
                             sat.active
                               ? 'bg-white/10 border-white/20 text-zinc-200'
-                              : 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+                              : 'bg-zinc-850 border-white/20 text-zinc-400'
                           }`}
                         >
                           {sat.active ? 'Nominal' : 'Offline'}
@@ -381,7 +383,7 @@ export const FleetSidebar: React.FC = () => {
                                 backgroundColor: isLit
                                   ? sat.active
                                     ? '#f4f4f5'
-                                    : '#f59e0b'
+                                    : '#71717a'
                                   : '#27272a',
                               }}
                             />
@@ -411,7 +413,7 @@ export const FleetSidebar: React.FC = () => {
                                 backgroundColor: isLit
                                   ? sat.active
                                     ? '#d4d4d8'
-                                    : '#f59e0b'
+                                    : '#71717a'
                                   : '#27272a',
                               }}
                             />

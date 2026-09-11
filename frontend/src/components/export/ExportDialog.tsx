@@ -73,28 +73,28 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl font-mono text-slate-200">
+      <DialogContent className="max-w-2xl font-mono text-zinc-200">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-sky-400">
-            <Download className="w-5 h-5" />
+          <div className="flex items-center gap-2 text-white">
+            <Download className="w-5 h-5 text-zinc-300" />
             <DialogTitle>ЭКСПОРТ РЕЗУЛЬТАТОВ РАСЧЕТА</DialogTitle>
           </div>
-          <DialogDescription>
-            Выгрузка результатов моделирования по официальному стандарту <code>cosmo-A-result-1.0</code>
+          <DialogDescription className="text-zinc-400">
+            Выгрузка результатов моделирования по официальному стандарту <code className="text-zinc-200">cosmo-A-result-1.0</code>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 text-xs">
-          <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
+          <div className="bg-black/50 p-3 rounded-xl border border-white/10 flex items-center justify-between">
             <div>
-              <div className="font-bold text-slate-100">cosmo-A-result-1.0</div>
-              <div className="text-[11px] text-slate-400">
-                Записей маршрутов: <b className="text-emerald-400">{routes.length}</b> (720 отсчетов x 3 пункта)
+              <div className="font-bold text-white">cosmo-A-result-1.0</div>
+              <div className="text-[11px] text-zinc-400">
+                Записей маршрутов: <b className="text-white">{routes.length}</b> (720 отсчетов x 3 пункта)
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={handleCopy} className="h-7 text-xs">
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Скопировано' : 'Буфер'}
               </Button>
               <Button
@@ -109,10 +109,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange }
             </div>
           </div>
 
-          <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
+          <div className="bg-black/50 p-3 rounded-xl border border-white/10 flex items-center justify-between">
             <div>
-              <div className="font-bold text-slate-100">Модифицированный сценарий (cosmo-A-1.0)</div>
-              <div className="text-[11px] text-slate-400">
+              <div className="font-bold text-white">Модифицированный сценарий (cosmo-A-1.0)</div>
+              <div className="text-[11px] text-zinc-400">
                 Содержит все изменения параметров орбит, фазирования и добавленные отказы
               </div>
             </div>
@@ -122,15 +122,15 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange }
               onClick={() => downloadFile(`${activeScenario.meta.id}_modified.json`, scenarioJsonString)}
               className="h-7 text-xs"
             >
-              <FileJson className="w-3.5 h-3.5 mr-1 text-sky-400" />
+              <FileJson className="w-3.5 h-3.5 mr-1 text-zinc-300" />
               Скачать сценарий
             </Button>
           </div>
 
           {/* Preview of JSON snippet */}
           <div className="space-y-1">
-            <span className="text-[10px] text-slate-400">Фрагмент структуры выгружаемого JSON:</span>
-            <pre className="bg-slate-950 p-3 rounded border border-slate-800 text-[10px] text-sky-300 overflow-x-auto max-h-48">
+            <span className="text-[10px] text-zinc-400">Фрагмент структуры выгружаемого JSON:</span>
+            <pre className="bg-black/60 p-3 rounded-xl border border-white/10 text-[10px] text-zinc-300 overflow-x-auto max-h-48">
               {JSON.stringify(
                 {
                   schema_version: exportDoc.schema_version,

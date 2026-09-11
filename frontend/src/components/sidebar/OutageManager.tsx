@@ -1,7 +1,6 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertOctagon, Trash2, Plus, ZapOff, ServerOff } from 'lucide-react'
 
@@ -63,47 +62,49 @@ export const OutageManager: React.FC = () => {
   )
 
   const handleToggleGateway = () => {
-    // Toggle outage for entire horizon or current time to horizon
     toggleGatewayOutage('G_MUR', 0, activeScenario.environment.horizon_s)
     recalculate()
   }
 
   return (
-    <Card className="flex flex-col gap-2 font-mono">
-      <CardHeader className="pb-2 border-b border-slate-800">
-        <div className="flex items-center justify-between text-rose-400">
-          <div className="flex items-center gap-1.5">
-            <AlertOctagon className="w-3.5 h-3.5" />
-            <CardTitle>ЦЕНТР МОДЕЛИРОВАНИЯ ОТКАЗОВ</CardTitle>
+    <div className="flex flex-col gap-2.5 font-mono text-zinc-200">
+      {/* Header */}
+      <div className="pb-2 border-b border-white/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-white">
+            <AlertOctagon className="w-3.5 h-3.5 text-zinc-300" />
+            <h3 className="text-xs font-bold uppercase font-sans tracking-wide">
+              Моделирование отказов
+            </h3>
           </div>
-          <span className="text-[10px] text-slate-400">
-            Отказов: <b className="text-rose-400">{failures.length}</b>
+          <span className="text-[10px] text-zinc-400 font-mono">
+            Отказов: <b className="text-white">{failures.length}</b>
           </span>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-3.5 pt-3 text-xs">
-        {/* Instant Disruption Trigger (Killer Feature) */}
-        <div className="bg-rose-950/40 border border-rose-800/80 p-2.5 rounded flex flex-col gap-2">
-          <div className="flex items-center justify-between text-[11px] text-rose-300 font-semibold">
-            <span className="flex items-center gap-1">
-              <ZapOff className="w-3.5 h-3.5 text-rose-400" />
+      <div className="space-y-3 pt-1 text-xs">
+        {/* Instant Disruption Trigger */}
+        <div className="bg-black/40 border border-white/10 p-2.5 rounded-xl flex flex-col gap-2">
+          <div className="flex items-center justify-between text-[11px] text-white font-semibold font-sans">
+            <span className="flex items-center gap-1.5">
+              <ZapOff className="w-3.5 h-3.5 text-zinc-300" />
               Экспресс-тест отказа в маршруте
             </span>
           </div>
-          <p className="text-[10px] text-slate-400 leading-relaxed">
+          <p className="text-[10px] text-zinc-400 leading-relaxed font-sans">
             Мгновенно смоделировать аварию транзитного КА{' '}
-            <b className="text-sky-300">
+            <b className="text-white font-mono">
               {transitSatsInRoute.length > 0 ? transitSatsInRoute.join(', ') : '(нет в маршруте)'}
             </b>{' '}
-            с текущего момента времени для проверки реакции сети:
+            для оперативной проверки перемаршрутизации:
           </p>
           <Button
             size="sm"
             variant="destructive"
             onClick={handleKillActiveTransitSat}
             disabled={transitSatsInRoute.length === 0}
-            className="w-full text-xs font-bold"
+            className="w-full text-xs font-bold h-7"
           >
             <ZapOff className="w-3.5 h-3.5 mr-1.5" />
             Вывести из строя спутник {transitSatsInRoute[0] || ''}
@@ -111,14 +112,14 @@ export const OutageManager: React.FC = () => {
         </div>
 
         {/* Gateway Failure Toggle */}
-        <div className="bg-purple-950/30 border border-purple-800/60 p-2.5 rounded flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ServerOff className="w-4 h-4 text-purple-400" />
+        <div className="bg-black/40 border border-white/10 p-2.5 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2 font-sans">
+            <ServerOff className="w-4 h-4 text-zinc-400" />
             <div>
-              <div className="font-semibold text-[11px] text-purple-200">
+              <div className="font-semibold text-[11px] text-white">
                 Авария шлюза Мурманска (G_MUR)
               </div>
-              <div className="text-[10px] text-slate-400">
+              <div className="text-[10px] text-zinc-400 font-mono">
                 {isGatewayOutageActive ? 'Шлюз недоступен' : 'Шлюз в штатном режиме'}
               </div>
             </div>
@@ -127,57 +128,57 @@ export const OutageManager: React.FC = () => {
             size="sm"
             variant={isGatewayOutageActive ? 'destructive' : 'outline'}
             onClick={handleToggleGateway}
-            className="text-xs h-7"
+            className="text-xs h-7 px-2.5"
           >
             {isGatewayOutageActive ? 'Восстановить' : 'Отключить'}
           </Button>
         </div>
 
         {/* Add Custom Outage Form */}
-        <div className="bg-slate-950/70 p-2.5 rounded border border-slate-800 space-y-2">
-          <div className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
-            <Plus className="w-3 h-3 text-sky-400" />
+        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-2">
+          <div className="text-[11px] font-semibold text-zinc-200 flex items-center gap-1 font-sans">
+            <Plus className="w-3.5 h-3.5 text-zinc-400" />
             Задать регламентный отказ аппарата
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-[9px] text-slate-400 block mb-0.5">Спутник:</label>
+              <label className="text-[9px] text-zinc-400 block mb-0.5 font-sans">Спутник:</label>
               <select
                 value={selectedSat}
                 onChange={(e) => setSelectedSat(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-sky-300 text-xs rounded p-1"
+                className="w-full bg-black/60 border border-white/15 text-white text-xs rounded-lg p-1 font-mono focus:outline-none"
               >
                 {activeScenario.design.satellites.map((s) => (
-                  <option key={s.id} value={s.id}>
+                  <option key={s.id} value={s.id} className="bg-zinc-900 text-white">
                     {s.id} ({s.plane_id})
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-[9px] text-slate-400 block mb-0.5">С часа:</label>
+              <label className="text-[9px] text-zinc-400 block mb-0.5 font-sans">С часа:</label>
               <input
                 type="number"
                 min="0"
                 max="23"
                 value={startHour}
                 onChange={(e) => setStartHour(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded p-1"
+                className="w-full bg-black/60 border border-white/15 text-white text-xs rounded-lg p-1 font-mono focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-[9px] text-slate-400 block mb-0.5">По час:</label>
+              <label className="text-[9px] text-zinc-400 block mb-0.5 font-sans">По час:</label>
               <input
                 type="number"
                 min="1"
                 max="24"
                 value={endHour}
                 onChange={(e) => setEndHour(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded p-1"
+                className="w-full bg-black/60 border border-white/15 text-white text-xs rounded-lg p-1 font-mono focus:outline-none"
               />
             </div>
           </div>
-          <Button size="sm" variant="secondary" onClick={handleAddOutage} className="w-full text-xs h-7">
+          <Button size="sm" variant="outline" onClick={handleAddOutage} className="w-full text-xs h-7">
             Добавить в сценарий
           </Button>
         </div>
@@ -185,33 +186,33 @@ export const OutageManager: React.FC = () => {
         {/* Current Failures List */}
         <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
           {failures.length === 0 ? (
-            <div className="text-[10px] text-slate-500 text-center py-2">
+            <div className="text-[10px] text-zinc-500 text-center py-2 font-mono">
               Нет активных заданных отказов
             </div>
           ) : (
             failures.map((f, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between bg-slate-950 p-1.5 rounded border border-slate-800 text-[11px]"
+                className="flex items-center justify-between bg-black/50 p-1.5 px-2.5 rounded-lg border border-white/10 text-[11px]"
               >
                 <div>
-                  <span className="text-rose-400 font-bold mr-1.5">{f.satellite_id}</span>
-                  <span className="text-slate-400 text-[10px]">
+                  <span className="text-white font-bold mr-1.5 font-mono">{f.satellite_id}</span>
+                  <span className="text-zinc-400 text-[10px] font-mono">
                     {(f.start_s / 3600).toFixed(1)}ч – {(f.end_s / 3600).toFixed(1)}ч
                   </span>
                 </div>
                 <button
                   onClick={() => handleRemoveOutage(i)}
-                  className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                  className="text-zinc-500 hover:text-white p-1 cursor-pointer transition-colors"
                   title="Удалить отказ"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

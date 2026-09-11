@@ -57,7 +57,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
         </span>
         <span className="text-white/20">|</span>
         <span className="text-[11px] font-bold tracking-[0.15em] text-zinc-300 uppercase font-sans">
-          COSMO-NET
+          COSMO WHAT
         </span>
       </div>
 

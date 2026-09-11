@@ -12,13 +12,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer'
 
     const variants = {
-      default: 'bg-sky-600 text-white font-medium hover:bg-sky-500 border border-sky-500/40',
-      destructive: 'bg-rose-600 text-white font-medium hover:bg-rose-500 border border-rose-500/40',
-      outline: 'border border-slate-700/90 bg-slate-900/80 text-slate-200 hover:bg-slate-800 hover:text-white',
-      secondary: 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/50',
-      ghost: 'hover:bg-slate-800 text-slate-300 hover:text-white',
-      link: 'text-sky-400 underline-offset-4 hover:underline',
-      glow: 'bg-emerald-600 text-white font-medium hover:bg-emerald-500 border border-emerald-500/40',
+      default: 'bg-white text-zinc-950 font-bold hover:bg-zinc-200 border border-white/20 shadow-sm',
+      destructive: 'bg-rose-950/40 text-rose-300 font-medium hover:bg-rose-900/60 border border-rose-500/40',
+      outline: 'border border-white/15 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white backdrop-blur-sm',
+      secondary: 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-white/10',
+      ghost: 'hover:bg-white/10 text-zinc-300 hover:text-white',
+      link: 'text-zinc-300 hover:text-white underline-offset-4 hover:underline',
+      glow: 'bg-white text-zinc-950 font-bold hover:bg-zinc-200 shadow-[0_0_12px_rgba(255,255,255,0.4)]',
     }
 
     const sizes = {
