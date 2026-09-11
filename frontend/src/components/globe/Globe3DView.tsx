@@ -45,7 +45,49 @@ const satDishMat = new THREE.MeshPhongMaterial({
   side: THREE.DoubleSide,
 })
 
+// Reticle Geometries for Orbit Tracking Node
+const reticleArcGeo = new THREE.RingGeometry(0.12, 0.15, 24, 1, 0, Math.PI * 1.5)
+const reticleCoreGeo = new THREE.SphereGeometry(0.065, 12, 12)
+
+const labelCanvasCache = new Map<string, THREE.CanvasTexture>()
+
+function getOrCreateTextTexture(text: string, color: string): THREE.CanvasTexture {
+  const key = `${text}_${color}`
+  if (labelCanvasCache.has(key)) return labelCanvasCache.get(key)!
+
+  const canvas = document.createElement('canvas')
+  canvas.width = 256
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')!
+  ctx.clearRect(0, 0, 256, 64)
+  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'
+  ctx.shadowBlur = 8
+  ctx.fillStyle = color
+  ctx.fillText(text, 128, 32)
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.minFilter = THREE.LinearFilter
+  labelCanvasCache.set(key, texture)
+  return texture
+}
+
+function createTextSprite(text: string, color: string = '#ffffff', scaleX = 0.8, scaleY = 0.2): THREE.Sprite {
+  const texture = getOrCreateTextTexture(text, color)
+  const mat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+  })
+  const sprite = new THREE.Sprite(mat)
+  sprite.scale.set(scaleX, scaleY, 1)
+  return sprite
+}
+
 function createSatelliteModel(
+  satId: string,
   isActive: boolean,
   isSelected: boolean,
   isInRoute: boolean
@@ -66,15 +108,18 @@ function createSatelliteModel(
     shininess: 50,
   })
   const bus = new THREE.Mesh(satBusGeo, busMat)
+  bus.userData = { type: 'satellite', id: satId }
   group.add(bus)
 
   // 2. Solar Wings (Port & Starboard)
   const leftWing = new THREE.Mesh(satWingGeo, satWingMat)
   leftWing.position.set(-0.19, 0, 0)
+  leftWing.userData = { type: 'satellite', id: satId }
   group.add(leftWing)
 
   const rightWing = new THREE.Mesh(satWingGeo, satWingMat)
   rightWing.position.set(0.19, 0, 0)
+  rightWing.userData = { type: 'satellite', id: satId }
   group.add(rightWing)
 
   const leftBoom = new THREE.Mesh(satBoomGeo, satBoomMat)
@@ -88,6 +133,7 @@ function createSatelliteModel(
   // 3. Earth-Facing High Gain Antenna Dish (points Nadir towards Earth, -Y)
   const dish = new THREE.Mesh(satDishGeo, satDishMat)
   dish.position.set(0, -0.055, 0)
+  dish.userData = { type: 'satellite', id: satId }
   group.add(dish)
 
   // 4. Optical Beacon Core (keeps satellite visible at any camera distance)
@@ -100,8 +146,10 @@ function createSatelliteModel(
     : 0xd4d4d8
   const beaconMat = new THREE.MeshBasicMaterial({ color: beaconColor })
   const beacon = new THREE.Mesh(satBeaconGeo, beaconMat)
+  beacon.userData = { type: 'satellite', id: satId }
   group.add(beacon)
 
+  group.userData = { type: 'satellite', id: satId }
   return group
 }
 
@@ -111,7 +159,9 @@ export const Globe3DView: React.FC = () => {
   const {
     currentTime_s,
     selectedClientId,
+    setSelectedClient,
     selectedSatelliteId,
+    setSelectedSatellite,
     simulationResult,
   } = useSimulationStore()
 
@@ -212,7 +262,7 @@ export const Globe3DView: React.FC = () => {
       normalScale: new THREE.Vector2(0.85, 0.85),
     })
 
-    // Custom Shader Hook: Black & White Grayscale Filter for Earth
+    // Custom Shader Hook: Balanced Muted Color Filter for Earth ("что то между цветным и ч/б")
     earthMat.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <map_fragment>',
@@ -221,9 +271,9 @@ export const Globe3DView: React.FC = () => {
         #ifdef USE_MAP
           // Grayscale luminosity conversion (ITU-R BT.709)
           float earthLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-          // Sleek aerospace monochrome contrast
-          earthLum = pow(earthLum, 1.15) * 1.05;
-          diffuseColor.rgb = vec3(earthLum);
+          vec3 monoTone = vec3(pow(earthLum, 1.10) * 1.05);
+          // Blended aerospace palette: 35% subtle natural color + 65% monochrome
+          diffuseColor.rgb = mix(monoTone, diffuseColor.rgb * 0.90, 0.35);
         #endif
         `
       )
@@ -344,30 +394,87 @@ export const Globe3DView: React.FC = () => {
     scene.add(routeGroup)
     routeGroupRef.current = routeGroup
 
-    // Mouse Controls (Euler Orbit)
+    // Mouse Controls (Euler Orbit) + Interactive Raycast Selection
     let isDragging = false
     let prevMousePos = { x: 0, y: 0 }
+    let downPos = { x: 0, y: 0 }
+    let downTime = 0
     let spherical = new THREE.Spherical(26, Math.PI / 3, Math.PI / 4)
+    const raycaster = new THREE.Raycaster()
+    raycaster.params.Points.threshold = 0.25
+    raycaster.params.Line.threshold = 0.15
 
     const onMouseDown = (e: MouseEvent) => {
       isDragging = true
       prevMousePos = { x: e.clientX, y: e.clientY }
+      downPos = { x: e.clientX, y: e.clientY }
+      downTime = performance.now()
     }
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
-      const dx = e.clientX - prevMousePos.x
-      const dy = e.clientY - prevMousePos.y
-      prevMousePos = { x: e.clientX, y: e.clientY }
+      if (isDragging) {
+        const dx = e.clientX - prevMousePos.x
+        const dy = e.clientY - prevMousePos.y
+        prevMousePos = { x: e.clientX, y: e.clientY }
 
-      spherical.theta -= dx * 0.007
-      spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi - dy * 0.007))
-      camera.position.setFromSpherical(spherical)
-      camera.lookAt(0, 0, 0)
+        spherical.theta -= dx * 0.007
+        spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi - dy * 0.007))
+        camera.position.setFromSpherical(spherical)
+        camera.lookAt(0, 0, 0)
+      } else {
+        // Hover raycast: show pointer cursor when hovering over ground sites or satellites
+        if (satGroupRef.current) {
+          const rect = dom.getBoundingClientRect()
+          const mouse = new THREE.Vector2(
+            ((e.clientX - rect.left) / rect.width) * 2 - 1,
+            -((e.clientY - rect.top) / rect.height) * 2 + 1
+          )
+          raycaster.setFromCamera(mouse, camera)
+          const hits = raycaster.intersectObjects(satGroupRef.current.children, true)
+          let hasTarget = false
+          for (const hit of hits) {
+            let o: THREE.Object3D | null = hit.object
+            while (o && !o.userData?.type) o = o.parent
+            if (o?.userData?.type) {
+              hasTarget = true
+              break
+            }
+          }
+          dom.style.cursor = hasTarget ? 'pointer' : 'default'
+        }
+      }
     }
 
-    const onMouseUp = () => {
+    const onMouseUp = (e: MouseEvent) => {
       isDragging = false
+      const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y)
+      const duration = performance.now() - downTime
+
+      // Distinguish click from camera rotation drag (under 8px movement and 400ms)
+      if (dist < 8 && duration < 400) {
+        const rect = dom.getBoundingClientRect()
+        const mouse = new THREE.Vector2(
+          ((e.clientX - rect.left) / rect.width) * 2 - 1,
+          -((e.clientY - rect.top) / rect.height) * 2 + 1
+        )
+        raycaster.setFromCamera(mouse, camera)
+        if (satGroupRef.current) {
+          const hits = raycaster.intersectObjects(satGroupRef.current.children, true)
+          for (const hit of hits) {
+            let o: THREE.Object3D | null = hit.object
+            while (o && !o.userData?.type) o = o.parent
+            if (o && o.userData?.type) {
+              if (o.userData.type === 'ground') {
+                useSimulationStore.getState().setSelectedClient(o.userData.id)
+                return
+              } else if (o.userData.type === 'satellite') {
+                useSimulationStore.getState().setSelectedSatellite(o.userData.id)
+                return
+              }
+            }
+          }
+        }
+      }
     }
 
     const onWheel = (e: WheelEvent) => {
@@ -479,56 +586,131 @@ export const Globe3DView: React.FC = () => {
     while (linksGroup.children.length > 0) linksGroup.remove(linksGroup.children[0])
     while (routeGroup.children.length > 0) routeGroup.remove(routeGroup.children[0])
 
-    // 1. Ground Stations on Earth Surface (Monochrome silver + subtle warm amber for active client)
+    // 1. Ground Stations on Earth Surface (Interactive, Click-to-Select)
     for (const g of activeScenario.ground_sites) {
       const [gx, gy, gz] = groundPosition(g.lat_deg, g.lon_deg)
       const pos = ecefToThree(gx, gy, gz)
       const isClient = g.role === 'client'
       const isSelected = g.id === selectedClientId
 
-      const pinGeo = new THREE.CylinderGeometry(0.02, 0.05, 0.15, 8)
+      // Pin pedestal
+      const pinGeo = new THREE.CylinderGeometry(0.03, 0.06, 0.16, 8)
       const pinMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xffffff : 0xa1a1aa) : 0xd4d4d8,
+        color: isClient ? (isSelected ? 0xffffff : 0xa1a1aa) : 0x93c5fd,
       })
       const pinMesh = new THREE.Mesh(pinGeo, pinMat)
       pinMesh.position.copy(pos)
       pinMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pos.clone().normalize())
+      pinMesh.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
       satGroup.add(pinMesh)
 
-      const dotGeo = new THREE.SphereGeometry(isClient ? 0.08 : 0.11, 10, 10)
+      // Interactive Ground Marker Dot (generous hit target)
+      const dotRadius = isSelected ? 0.14 : isClient ? 0.11 : 0.13
+      const dotGeo = new THREE.SphereGeometry(dotRadius, 12, 12)
       const dotMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xffffff : 0xd4d4d8) : 0xffffff,
+        color: isSelected ? 0xffffff : isClient ? 0xd4d4d8 : 0x93c5fd,
       })
       const dotMesh = new THREE.Mesh(dotGeo, dotMat)
       dotMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.12)))
+      dotMesh.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
       satGroup.add(dotMesh)
+
+      // Ground Target Ring if Selected
+      if (isSelected) {
+        const ringGeo = new THREE.RingGeometry(0.24, 0.30, 32)
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.90,
+        })
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat)
+        ringMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.04)))
+        ringMesh.lookAt(pos.clone().multiplyScalar(2))
+        satGroup.add(ringMesh)
+      }
+
+      // Floating text label above ground station
+      const groundLabel = createTextSprite(
+        g.role === 'gateway' ? `[ШЛЮЗ] ${g.name}` : `[АБОНЕНТ] ${g.id}`,
+        isSelected ? '#ffffff' : '#cbd5e1',
+        0.75,
+        0.18
+      )
+      groundLabel.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
+      groundLabel.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
+      satGroup.add(groundLabel)
     }
 
     if (!currentSnap) return
 
     const satPosMap = new Map<string, THREE.Vector3>()
 
-    // 2. High-Detail 3D Satellites (Nadir-pointing 3D models with solar wings, antenna dish & beacon)
+    // 2. Satellites (Orbit Tracker Point + Opposite 3D Spacecraft Model + Floating Codename Labels)
     for (const sat of currentSnap.satellites) {
       const pos = ecefToThree(sat.x_km, sat.y_km, sat.z_km)
       satPosMap.set(sat.id, pos)
 
       const isSelected = sat.id === selectedSatelliteId
       const isInRoute = activeRoutePath.includes(sat.id)
+      const codename = CODENAMES[sat.id] || `Sat-${sat.id}`
+      const radial = pos.clone().normalize()
 
-      const satModel = createSatelliteModel(sat.active, isSelected, isInRoute)
-      satModel.position.copy(pos)
+      // A. Orbital Tracker Node (The Point "точка" on the orbit trajectory)
+      const dotColor = !sat.active ? 0xf87171 : isInRoute ? 0xffffff : isSelected ? 0xffffff : 0xe4e4e7
+      const trackerDot = new THREE.Mesh(
+        reticleCoreGeo,
+        new THREE.MeshBasicMaterial({ color: dotColor })
+      )
+      trackerDot.position.copy(pos)
+      trackerDot.userData = { type: 'satellite', id: sat.id }
+      satGroup.add(trackerDot)
 
-      // Nadir-pointing orientation: antenna points towards Earth, solar arrays align tangentially
-      const zenith = pos.clone().normalize()
-      satModel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), zenith)
+      // Reticle Arc Bracket around the tracker point
+      const arcMat = new THREE.MeshBasicMaterial({
+        color: !sat.active ? 0xf87171 : isSelected ? 0xffffff : 0x94a3b8,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: isSelected ? 0.95 : 0.65,
+      })
+      const arcMesh = new THREE.Mesh(reticleArcGeo, arcMat)
+      arcMesh.position.copy(pos)
+      arcMesh.lookAt(pos.clone().multiplyScalar(2))
+      arcMesh.userData = { type: 'satellite', id: sat.id }
+      satGroup.add(arcMesh)
 
+      // B. The 3D Spacecraft Model opposite / adjacent to the point
+      // Tangential lateral offset in orbital plane (0.35 units)
+      const tangent = new THREE.Vector3(-pos.z, 0, pos.x).normalize()
+      const satModelPos = pos.clone().add(tangent.clone().multiplyScalar(0.35))
+
+      // Thin guide link line connecting tracker point to 3D satellite model
+      const linkGeo = new THREE.BufferGeometry().setFromPoints([pos, satModelPos])
+      const linkMat = new THREE.LineBasicMaterial({
+        color: sat.active ? 0xd4d4d8 : 0xf87171,
+        transparent: true,
+        opacity: 0.35,
+      })
+      satGroup.add(new THREE.Line(linkGeo, linkMat))
+
+      // 3D Model with solar panels and antenna dish
+      const satModel = createSatelliteModel(sat.id, sat.active, isSelected, isInRoute)
+      satModel.position.copy(satModelPos)
+
+      // Nadir-pointing orientation: antenna points toward Earth center
+      satModel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial)
       satGroup.add(satModel)
 
-      // Concentric double halo ring for selected satellite
+      // C. Floating Text Label above the node (Aurora-1, Aurora-2, Helios-R, etc.)
+      const labelColor = !sat.active ? '#fca5a5' : isSelected ? '#ffffff' : '#cbd5e1'
+      const label = createTextSprite(codename, labelColor, 0.70, 0.17)
+      label.position.copy(pos.clone().add(radial.clone().multiplyScalar(0.28)))
+      label.userData = { type: 'satellite', id: sat.id }
+      satGroup.add(label)
+
+      // D. Halo ring for selected satellite
       if (isSelected) {
-        // Inner Halo Ring
-        const innerRingGeo = new THREE.RingGeometry(0.2, 0.25, 24)
+        const innerRingGeo = new THREE.RingGeometry(0.22, 0.27, 24)
         const innerRingMat = new THREE.MeshBasicMaterial({
           color: 0xffffff,
           side: THREE.DoubleSide,
@@ -540,8 +722,7 @@ export const Globe3DView: React.FC = () => {
         innerRingMesh.lookAt(pos.clone().multiplyScalar(2))
         satGroup.add(innerRingMesh)
 
-        // Outer Halo Ring
-        const outerRingGeo = new THREE.RingGeometry(0.3, 0.34, 24)
+        const outerRingGeo = new THREE.RingGeometry(0.32, 0.36, 24)
         const outerRingMat = new THREE.MeshBasicMaterial({
           color: 0xffffff,
           side: THREE.DoubleSide,
