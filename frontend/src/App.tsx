@@ -12,7 +12,7 @@ import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 export const App: React.FC = () => {
   const { loadDefaultScenario } = useScenarioStore()
-  const { activeTab, recalculate } = useSimulationStore()
+  const { activeTab, setActiveTab, recalculate } = useSimulationStore()
 
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -69,8 +69,8 @@ export const App: React.FC = () => {
                 Сравнение и аналитика группировки
               </h1>
               <button
-                onClick={() => recalculate()}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-white rounded-lg border border-white/20 cursor-pointer"
+                onClick={() => setActiveTab('dashboard')}
+                className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-bold text-zinc-100 hover:text-white rounded-xl border border-white/20 cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
               >
                 Вернуться к 3D обзору
               </button>
