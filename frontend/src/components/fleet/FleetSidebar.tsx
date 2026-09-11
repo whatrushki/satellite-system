@@ -203,6 +203,9 @@ export const FleetSidebar: React.FC = () => {
                 ? 82 + ((parseInt(sat.id.replace(/\D/g, '') || '1', 10) * 11) % 17)
                 : 0
 
+              const satNum = parseInt(sat.id.replace(/\D/g, '') || '1', 10)
+              const satPhotoUrl = `/satellites/sat_${((satNum - 1) % 3) + 1}.jpg`
+
               return (
                 <div
                   key={sat.id}
@@ -230,48 +233,22 @@ export const FleetSidebar: React.FC = () => {
                 >
                   {/* Top Row: Icon + Name + Nominal Pill */}
                   <div className="flex items-start gap-2.5">
-                    {/* 3D Satellite Icon Thumbnail */}
-                    <div className="w-10 h-10 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center shrink-0 text-zinc-300">
-                      <svg
-                        width="22"
-                        height="22"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <rect
-                          x="9"
-                          y="8"
-                          width="6"
-                          height="8"
-                          rx="1"
-                          fill="currentColor"
-                          fillOpacity="0.2"
-                        />
-                        <line x1="2" y1="12" x2="9" y2="12" strokeWidth="1.5" />
-                        <rect
-                          x="2"
-                          y="9.5"
-                          width="5"
-                          height="5"
-                          rx="0.5"
-                          fill="currentColor"
-                          fillOpacity="0.3"
-                        />
-                        <line x1="15" y1="12" x2="22" y2="12" strokeWidth="1.5" />
-                        <rect
-                          x="17"
-                          y="9.5"
-                          width="5"
-                          height="5"
-                          rx="0.5"
-                          fill="currentColor"
-                          fillOpacity="0.3"
-                        />
-                        <circle cx="12" cy="5" r="1.5" />
-                        <line x1="12" y1="5" x2="12" y2="8" strokeWidth="1.5" />
-                      </svg>
+                    {/* Real Satellite Photograph Thumbnail */}
+                    <div className="w-10 h-10 rounded-lg bg-black/70 border border-white/15 overflow-hidden shrink-0 relative group shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+                      <img
+                        src={satPhotoUrl}
+                        alt={codename}
+                        className={`w-full h-full object-cover object-center transition-all duration-300 ${
+                          !sat.active
+                            ? 'grayscale brightness-50 contrast-125'
+                            : 'contrast-110 group-hover:scale-110'
+                        }`}
+                      />
+                      {!sat.active && (
+                        <div className="absolute inset-0 bg-[#c86f78]/30 flex items-center justify-center">
+                          <span className="text-[7px] font-mono font-bold text-rose-200">FAIL</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">

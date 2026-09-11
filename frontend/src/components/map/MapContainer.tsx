@@ -116,21 +116,28 @@ export const MapContainer: React.FC = () => {
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
-        {/* Button: ((•)) Live (Soft red accent - ONLY live button has red accent) */}
+        {/* Button: ((•)) Live (Pale red desaturated accent) */}
         <button
           onClick={togglePlay}
           style={{
             background: isPlaying
-              ? 'rgba(70, 20, 26, 0.70)'
-              : 'rgba(48, 16, 22, 0.65)',
-            border: '1px solid rgba(244, 63, 94, 0.45)',
-            boxShadow: '0 0 14px rgba(244, 63, 94, 0.25), 0 4px 12px rgba(0, 0, 0, 0.5)',
+              ? 'rgba(54, 26, 30, 0.70)'
+              : 'rgba(38, 20, 24, 0.65)',
+            border: '1px solid rgba(210, 130, 138, 0.38)',
+            boxShadow: '0 0 10px rgba(210, 130, 138, 0.15), 0 4px 12px rgba(0, 0, 0, 0.5)',
+            color: '#eed2d5',
           }}
-          className="px-4 py-1.5 rounded-lg text-xs font-sans font-bold text-rose-200 cursor-pointer backdrop-blur-md flex items-center gap-1.5 transition-all hover:brightness-110"
+          className="px-4 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md flex items-center gap-1.5 transition-all hover:brightness-110"
         >
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            <span
+              style={{ backgroundColor: '#d9828b' }}
+              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50"
+            />
+            <span
+              style={{ backgroundColor: '#c86f78' }}
+              className="relative inline-flex rounded-full h-2 w-2"
+            />
           </span>
           <span>{isPlaying ? 'PAUSE' : '((•)) Live'}</span>
         </button>

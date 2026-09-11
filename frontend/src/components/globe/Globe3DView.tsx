@@ -23,6 +23,88 @@ const CODENAMES: Record<string, string> = {
   S22: 'Vector-3',
 }
 
+// Reusable Geometries & Materials for 3D Satellite Models
+const satBusGeo = new THREE.BoxGeometry(0.14, 0.08, 0.09)
+const satWingGeo = new THREE.BoxGeometry(0.24, 0.005, 0.09)
+const satBoomGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.05, 8)
+satBoomGeo.rotateZ(Math.PI / 2)
+const satDishGeo = new THREE.ConeGeometry(0.05, 0.025, 14, 1, true)
+satDishGeo.rotateX(Math.PI)
+const satBeaconGeo = new THREE.SphereGeometry(0.04, 10, 10)
+
+const satWingMat = new THREE.MeshPhongMaterial({
+  color: 0x141f30,
+  specular: 0x60a5fa,
+  shininess: 90,
+})
+const satBoomMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 })
+const satDishMat = new THREE.MeshPhongMaterial({
+  color: 0xe2e8f0,
+  specular: 0xffffff,
+  shininess: 100,
+  side: THREE.DoubleSide,
+})
+
+function createSatelliteModel(
+  isActive: boolean,
+  isSelected: boolean,
+  isInRoute: boolean
+): THREE.Group {
+  const group = new THREE.Group()
+
+  // 1. Satellite Bus Chassis
+  const busColor = !isActive
+    ? 0xc86f78 // Pale red for outage
+    : isSelected
+    ? 0xffffff
+    : isInRoute
+    ? 0xf1f5f9
+    : 0xa1a1aa
+  const busMat = new THREE.MeshPhongMaterial({
+    color: busColor,
+    specular: 0xffffff,
+    shininess: 50,
+  })
+  const bus = new THREE.Mesh(satBusGeo, busMat)
+  group.add(bus)
+
+  // 2. Solar Wings (Port & Starboard)
+  const leftWing = new THREE.Mesh(satWingGeo, satWingMat)
+  leftWing.position.set(-0.19, 0, 0)
+  group.add(leftWing)
+
+  const rightWing = new THREE.Mesh(satWingGeo, satWingMat)
+  rightWing.position.set(0.19, 0, 0)
+  group.add(rightWing)
+
+  const leftBoom = new THREE.Mesh(satBoomGeo, satBoomMat)
+  leftBoom.position.set(-0.095, 0, 0)
+  group.add(leftBoom)
+
+  const rightBoom = new THREE.Mesh(satBoomGeo, satBoomMat)
+  rightBoom.position.set(0.095, 0, 0)
+  group.add(rightBoom)
+
+  // 3. Earth-Facing High Gain Antenna Dish (points Nadir towards Earth, -Y)
+  const dish = new THREE.Mesh(satDishGeo, satDishMat)
+  dish.position.set(0, -0.055, 0)
+  group.add(dish)
+
+  // 4. Optical Beacon Core (keeps satellite visible at any camera distance)
+  const beaconColor = !isActive
+    ? 0xc86f78 // Pale red for outage
+    : isSelected
+    ? 0xffffff
+    : isInRoute
+    ? 0xffffff
+    : 0xd4d4d8
+  const beaconMat = new THREE.MeshBasicMaterial({ color: beaconColor })
+  const beacon = new THREE.Mesh(satBeaconGeo, beaconMat)
+  group.add(beacon)
+
+  return group
+}
+
 export const Globe3DView: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
@@ -426,21 +508,22 @@ export const Globe3DView: React.FC = () => {
 
     const satPosMap = new Map<string, THREE.Vector3>()
 
-    // 2. Satellites (48 Satellites: silver-white nodes, soft red for outages)
-    const satGeo = new THREE.SphereGeometry(0.12, 16, 16)
+    // 2. High-Detail 3D Satellites (Nadir-pointing 3D models with solar wings, antenna dish & beacon)
     for (const sat of currentSnap.satellites) {
       const pos = ecefToThree(sat.x_km, sat.y_km, sat.z_km)
       satPosMap.set(sat.id, pos)
 
-      let color = 0xe4e4e7
-      if (!sat.active) color = 0xf87171 // Soft red for outages
-      if (activeRoutePath.includes(sat.id)) color = 0xffffff
-
       const isSelected = sat.id === selectedSatelliteId
-      const satMat = new THREE.MeshBasicMaterial({ color })
-      const mesh = new THREE.Mesh(satGeo, satMat)
-      mesh.position.copy(pos)
-      satGroup.add(mesh)
+      const isInRoute = activeRoutePath.includes(sat.id)
+
+      const satModel = createSatelliteModel(sat.active, isSelected, isInRoute)
+      satModel.position.copy(pos)
+
+      // Nadir-pointing orientation: antenna points towards Earth, solar arrays align tangentially
+      const zenith = pos.clone().normalize()
+      satModel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), zenith)
+
+      satGroup.add(satModel)
 
       // Concentric double halo ring for selected satellite
       if (isSelected) {
