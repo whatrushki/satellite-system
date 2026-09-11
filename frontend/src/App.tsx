@@ -56,7 +56,7 @@ export const App: React.FC = () => {
 
           {/* 4. Floating Right Sidebar: Telemetry in weightlessness */}
           <div className="absolute right-4 top-16 bottom-6 w-[300px] z-20 pointer-events-auto">
-            <ErrorBoundary fallbackTitle="Телеметрия SpaceX">
+            <ErrorBoundary fallbackTitle="Телеметрия">
               <SpaceXTelemetryPanel />
             </ErrorBoundary>
           </div>
