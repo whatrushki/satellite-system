@@ -96,13 +96,15 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           width: '300px',
           height: '100%',
           borderRadius: '20px',
-          background: 'rgba(12, 16, 26, 0.75)',
+          background: 'rgba(16, 19, 26, 0.85)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow:
+            '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
         }}
-        className="p-4 flex items-center justify-center text-xs font-mono text-slate-500 backdrop-blur-xl"
+        className="p-4 flex items-center justify-center text-xs font-mono text-zinc-500 backdrop-blur-xl"
       >
         <span>Telemetry initializing...</span>
       </div>
@@ -124,8 +126,10 @@ export const SpaceXTelemetryPanel: React.FC = () => {
         width: '300px',
         height: '100%',
         borderRadius: '20px',
-        background: 'rgba(12, 16, 26, 0.75)',
+        background: 'rgba(16, 19, 26, 0.85)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
+        boxShadow:
+          '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -136,27 +140,27 @@ export const SpaceXTelemetryPanel: React.FC = () => {
       <div className="p-3.5 pb-2.5 border-b border-white/10 shrink-0">
         <div className="flex items-start justify-between">
           <div>
-            {/* Subtitle: ACTIVE ASSET in 9px uppercase, font-bold, text-slate-400, tracking-widest */}
-            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-widest font-sans block leading-none">
+            {/* Subtitle: ACTIVE ASSET */}
+            <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-widest font-sans block leading-none">
               ACTIVE ASSET
             </span>
-            {/* Title: Aurora-1 (S01) in 16px font-black text-white */}
+            {/* Title: Aurora-1 (S01) */}
             <h2 className="text-[16px] font-black text-white font-sans mt-1 leading-tight">
               {satName} ({satId})
             </h2>
-            {/* Metadata Line: PLANE 1 • 550 KM LEO • RELAY MODE in 10px font-mono text-slate-400 */}
-            <div className="text-[10px] font-mono text-slate-400 mt-1">
+            {/* Metadata Line: PLANE 1 • 550 KM LEO • RELAY MODE */}
+            <div className="text-[10px] font-mono text-zinc-400 mt-1">
               {planeLabel} • {altKm} KM LEO • RELAY MODE
             </div>
           </div>
 
           {/* Status Pill: [ Nominal ] */}
           {isSatFailed ? (
-            <span className="bg-rose-500/15 border border-rose-500/40 text-rose-400 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
+            <span className="bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
               Offline
             </span>
           ) : (
-            <span className="bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
+            <span className="bg-white/10 border border-white/20 text-zinc-200 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
               Nominal
             </span>
           )}
@@ -164,23 +168,22 @@ export const SpaceXTelemetryPanel: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* 3. Card 1: Signal Strength Histogram (Exact SpaceX Equalizer) */}
-        <div className="bg-slate-900/40 border border-white/10 rounded-lg p-3 space-y-2">
-          {/* Title: Signal strength (11px font-bold text-slate-300). Subtitle: -1.23k • 11 dBm */}
+        {/* 3. Card 1: Signal Strength Histogram (Monochrome) */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-sans">
-            <span className="text-[11px] font-bold text-slate-300">Signal strength</span>
-            <span className="text-slate-400 font-mono text-[10px]">-1.23k • 11 dBm</span>
+            <span className="text-[11px] font-bold text-zinc-300">Signal strength</span>
+            <span className="text-zinc-400 font-mono text-[10px]">-1.23k • 11 dBm</span>
           </div>
 
-          {/* Big Digit: 94% in 18px font-black text-sky-400 */}
+          {/* Big Digit: 94% in pure white */}
           <div className="flex items-baseline justify-between">
-            <span className="text-[18px] font-black text-sky-400 font-sans tracking-tight">
+            <span className="text-[18px] font-black text-white font-sans tracking-tight">
               {isSatFailed ? '0%' : '94%'}
             </span>
-            <span className="text-[9px] text-slate-400 uppercase font-mono">Carrier: 24.5 GHz</span>
+            <span className="text-[9px] text-zinc-400 uppercase font-mono">Carrier: 24.5 GHz</span>
           </div>
 
-          {/* The 30-Bar Histogram: A flex row with 30 vertical rounded bars (width: 5px; margin: 0 1px; border-radius: 2px 2px 0 0;) */}
+          {/* The 30-Bar Histogram (Monochrome bars, soft yellow if failed) */}
           <div className="h-12 w-full flex items-end justify-between pt-1">
             {barHeights.map((val, i) => {
               const h = isSatFailed ? 4 : (val / 100) * 44
@@ -193,7 +196,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                     margin: '0 1px',
                     borderRadius: '2px 2px 0 0',
                     height: `${h}px`,
-                    backgroundColor: isSatFailed ? '#881337' : isRecent ? '#38bdf8' : '#475569',
+                    backgroundColor: isSatFailed ? '#d97706' : isRecent ? '#ffffff' : '#52525b',
                   }}
                   className="transition-all duration-200"
                 />
@@ -201,46 +204,41 @@ export const SpaceXTelemetryPanel: React.FC = () => {
             })}
           </div>
 
-          {/* Time range labels: -30 min on the left, NOW on the right */}
-          <div className="flex justify-between text-[9px] text-slate-400 font-mono pt-0.5">
+          <div className="flex justify-between text-[9px] text-zinc-400 font-mono pt-0.5">
             <span>-30 min</span>
-            <span className="text-slate-300 font-semibold">NOW</span>
+            <span className="text-zinc-200 font-semibold">NOW</span>
           </div>
         </div>
 
-        {/* 4. Card 2: Payload Diagnostics */}
-        <div className="bg-slate-900/40 border border-white/10 rounded-lg p-3 space-y-2 font-sans">
-          {/* Title: Payload diagnostics (11px font-bold text-slate-300 uppercase) */}
-          <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+        {/* 4. Card 2: Payload Diagnostics (Monochrome curves) */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2 font-sans">
+          <div className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
             Payload diagnostics
           </div>
 
-          {/* 2 side-by-side metric boxes */}
           <div className="grid grid-cols-2 gap-2">
-            {/* Left: Payload temp -> vector SVG spline curve -> +19.4°C */}
-            <div className="bg-slate-950/60 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[9px] text-slate-400 uppercase font-semibold">
+            <div className="bg-black/40 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
+              <span className="text-[9px] text-zinc-400 uppercase font-semibold">
                 Payload temp
               </span>
               <svg className="w-full h-6 my-1" viewBox="0 0 100 24" preserveAspectRatio="none">
                 <path
                   d="M0,16 Q20,6 40,12 T75,8 L100,14"
                   fill="none"
-                  stroke="#38bdf8"
+                  stroke="rgba(255, 255, 255, 0.75)"
                   strokeWidth="1.5"
                 />
               </svg>
               <span className="text-[12px] font-black text-white font-mono">+19.4°C</span>
             </div>
 
-            {/* Right: Tx power -> vector SVG spline curve -> 24.0 dBm */}
-            <div className="bg-slate-950/60 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[9px] text-slate-400 uppercase font-semibold">Tx power</span>
+            <div className="bg-black/40 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
+              <span className="text-[9px] text-zinc-400 uppercase font-semibold">Tx power</span>
               <svg className="w-full h-6 my-1" viewBox="0 0 100 24" preserveAspectRatio="none">
                 <path
                   d="M0,10 Q25,18 50,6 T80,14 L100,8"
                   fill="none"
-                  stroke="#10b981"
+                  stroke="rgba(255, 255, 255, 0.50)"
                   strokeWidth="1.5"
                 />
               </svg>
@@ -249,29 +247,30 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* 5. Card 3: THE AMBER ANOMALY DETECTED BOX (REPLICA) */}
+        {/* 5. Card 3: THE AMBER ANOMALY DETECTED BOX (Soft yellow warning) */}
         {!alertDismissed && (
           <div
             style={{
-              background: 'rgba(45, 28, 12, 0.60)',
-              border: '1px solid rgba(245, 158, 11, 0.45)',
+              background: 'rgba(32, 24, 14, 0.70)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
               borderRadius: '12px',
               padding: '12px',
               backdropFilter: 'blur(16px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(245, 158, 11, 0.08)',
             }}
             className="space-y-2.5 font-sans transition-all"
           >
-            {/* Header: Yellow triangle warning icon + Anomaly detected (12px font-bold text-amber-200) + ✕ dismiss button */}
+            {/* Header: Yellow triangle warning icon + Anomaly detected + ✕ dismiss button */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-[12px] font-bold text-amber-200">
+                <span className="text-[12px] font-bold text-amber-300">
                   {isSatFailed ? 'Critical Offline Alert' : 'Anomaly detected'}
                 </span>
               </div>
               <button
                 onClick={() => setAlertDismissed(true)}
-                className="text-amber-200/70 hover:text-white text-xs cursor-pointer px-1 transition-colors"
+                className="text-amber-300/70 hover:text-white text-xs cursor-pointer px-1 transition-colors"
                 title="Dismiss warning"
               >
                 ✕
@@ -281,17 +280,17 @@ export const SpaceXTelemetryPanel: React.FC = () => {
             {/* Progress Sliders: Orbit deviation: 12%, Thermal threshold: 98%, Power budget: 44% */}
             <div className="space-y-2 text-[10px] font-mono">
               <div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-zinc-300">
                   <span>Orbit deviation:</span>
-                  <b className={isSatFailed ? 'text-rose-400' : 'text-amber-400'}>
+                  <b className="text-amber-300">
                     {isSatFailed ? '100%' : '12%'}
                   </b>
                 </div>
-                <div className="h-1.5 w-full bg-slate-900 rounded-xs mt-1 overflow-hidden">
+                <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
                     style={{
                       width: isSatFailed ? '100%' : '12%',
-                      backgroundColor: isSatFailed ? '#ef4444' : '#f59e0b',
+                      backgroundColor: isSatFailed ? '#d97706' : '#f59e0b',
                     }}
                     className="h-full rounded-xs transition-all duration-300"
                   />
@@ -299,26 +298,26 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-zinc-300">
                   <span>Thermal threshold:</span>
                   <b className="text-amber-300">98%</b>
                 </div>
-                <div className="h-1.5 w-full bg-slate-900 rounded-xs mt-1 overflow-hidden">
+                <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
-                    style={{ width: '98%', backgroundColor: '#f97316' }}
+                    style={{ width: '98%', backgroundColor: '#d97706' }}
                     className="h-full rounded-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-zinc-300">
                   <span>Power budget:</span>
-                  <b className="text-slate-300">44%</b>
+                  <b className="text-zinc-300">44%</b>
                 </div>
-                <div className="h-1.5 w-full bg-slate-900 rounded-xs mt-1 overflow-hidden">
+                <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
                   <div
-                    style={{ width: '44%', backgroundColor: '#94a3b8' }}
+                    style={{ width: '44%', backgroundColor: '#71717a' }}
                     className="h-full rounded-xs"
                   />
                 </div>
@@ -332,7 +331,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                 style={{
                   background: 'rgba(255, 255, 255, 0.06)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#cbd5e1',
+                  color: '#d4d4d8',
                   fontSize: '11px',
                   borderRadius: '6px',
                   padding: '6px 12px',
@@ -346,16 +345,16 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <button
                 onClick={handleRespondAnomaly}
                 style={{
-                  background: '#d97706',
-                  border: '1px solid #f59e0b',
-                  color: '#000000',
+                  background: 'rgba(245, 158, 11, 0.25)',
+                  border: '1px solid rgba(245, 158, 11, 0.50)',
+                  color: '#fef3c7',
                   fontSize: '11px',
                   fontWeight: 700,
                   borderRadius: '6px',
                   padding: '6px 12px',
                   cursor: 'pointer',
                 }}
-                className="hover:brightness-110 font-sans transition-all"
+                className="hover:bg-amber-500/35 font-sans transition-all"
                 title="Initiate emergency Dijkstra reroute failure test"
               >
                 Respond
@@ -364,57 +363,57 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           </div>
         )}
 
-        {/* 6. Card 4: Client Route Breakdown */}
-        <div className="bg-slate-900/40 border border-white/10 rounded-lg p-3 space-y-2.5">
+        {/* 6. Card 4: Client Route Breakdown (Monochrome) */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2.5">
           <div className="flex items-center justify-between text-[11px] font-sans">
-            <span className="text-slate-300 font-bold">Client Route Breakdown</span>
+            <span className="text-zinc-300 font-bold">Client Route Breakdown</span>
             <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
+              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
                 isConnected
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  ? 'bg-white/10 text-white border-white/20'
+                  : 'bg-amber-950/40 text-amber-300 border-amber-500/40'
               }`}
             >
               {isConnected ? `${currentTimeline?.hops} HOPS` : currentTimeline?.reason || 'LINK OK'}
             </span>
           </div>
 
-          {/* Hop sequence: C65 -> S01 -> S02 -> G_MUR */}
-          <div className="flex items-center flex-wrap gap-1 bg-slate-950/80 p-2 rounded-lg border border-white/5 text-[11px] font-mono">
+          {/* Hop sequence */}
+          <div className="flex items-center flex-wrap gap-1 bg-black/60 p-2 rounded-lg border border-white/5 text-[11px] font-mono">
             {routeHops.map((node, i) => (
               <React.Fragment key={i}>
                 <button
                   onClick={() => {
                     if (node.startsWith('S')) setSelectedSatellite(node)
                   }}
-                  className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                  className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors border ${
                     node === selectedClientId
-                      ? 'text-amber-300 bg-amber-500/15 border border-amber-500/30'
+                      ? 'text-amber-300 bg-amber-500/15 border-amber-500/30'
                       : node === 'G_MUR'
-                      ? 'text-indigo-300 bg-indigo-500/15 border border-indigo-500/30'
+                      ? 'text-zinc-200 bg-white/10 border-white/20'
                       : node === satId
-                      ? 'text-white bg-sky-600 border border-sky-400'
-                      : 'text-sky-300 bg-sky-500/10 hover:bg-sky-500/20'
+                      ? 'text-white bg-white/25 border-white/50 shadow-sm'
+                      : 'text-zinc-300 bg-white/5 border-transparent hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {node}
                 </button>
                 {i < routeHops.length - 1 && (
-                  <ArrowRight className="w-3 h-3 text-slate-500 shrink-0" />
+                  <ArrowRight className="w-3 h-3 text-zinc-600 shrink-0" />
                 )}
               </React.Fragment>
             ))}
           </div>
 
           {/* Distance & Latency metrics */}
-          <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-            <div className="flex justify-between bg-slate-950/60 p-2 rounded-lg border border-white/5">
+          <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
+            <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
               <span>Distance:</span>
-              <b className="text-slate-100 font-mono font-bold">{routeDist} km</b>
+              <b className="text-zinc-100 font-mono font-bold">{routeDist} km</b>
             </div>
-            <div className="flex justify-between bg-slate-950/60 p-2 rounded-lg border border-white/5">
+            <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
               <span>Latency:</span>
-              <b className="text-slate-100 font-mono font-bold">{routeLatency} ms</b>
+              <b className="text-zinc-100 font-mono font-bold">{routeLatency} ms</b>
             </div>
           </div>
         </div>

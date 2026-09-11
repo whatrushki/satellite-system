@@ -44,13 +44,13 @@ export const MapContainer: React.FC = () => {
   }
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-slate-950 overflow-hidden border border-white/10 rounded-xl shadow-2xl">
+    <div className="relative w-full h-full flex flex-col bg-[#06080d] overflow-hidden">
       {/* Center 3D/2D Viewport */}
       <div className="w-full h-full relative">
         {viewMode === '2d' ? <PolarMapCanvas /> : <Globe3DView />}
       </div>
 
-      {/* Floating Bottom Separate Buttons (Matches Image 3: NOT a single plate, but discrete buttons) */}
+      {/* Floating Bottom Separate Buttons (Discrete floating dark grey buttons) */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 select-none font-mono pointer-events-auto">
         {/* Button: 2D */}
         <button
@@ -59,16 +59,16 @@ export const MapContainer: React.FC = () => {
             viewMode === '2d'
               ? {
                   background:
-                    'linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.10) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.45)',
+                    'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.40)',
                   boxShadow:
-                    '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+                    '0 4px 14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
                   color: '#ffffff',
                 }
               : {
-                  background: 'rgba(18, 24, 38, 0.75)',
+                  background: 'rgba(18, 21, 28, 0.85)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#94a3b8',
+                  color: '#a1a1aa',
                 }
           }
           className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md transition-all hover:text-white"
@@ -83,16 +83,16 @@ export const MapContainer: React.FC = () => {
             viewMode === '3d'
               ? {
                   background:
-                    'linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.10) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.45)',
+                    'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.40)',
                   boxShadow:
-                    '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+                    '0 4px 14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
                   color: '#ffffff',
                 }
               : {
-                  background: 'rgba(18, 24, 38, 0.75)',
+                  background: 'rgba(18, 21, 28, 0.85)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#94a3b8',
+                  color: '#a1a1aa',
                 }
           }
           className="px-4 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md transition-all hover:text-white"
@@ -106,9 +106,9 @@ export const MapContainer: React.FC = () => {
             alert('Наземный комплекс: G_MUR (Шлюз Мурманска), C65, C70, C72 (Абоненты СМП)')
           }}
           style={{
-            background: 'rgba(18, 24, 38, 0.75)',
+            background: 'rgba(18, 21, 28, 0.85)',
             border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: '#94a3b8',
+            color: '#a1a1aa',
           }}
           className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-medium cursor-pointer backdrop-blur-md transition-all hover:text-white"
         >
@@ -119,29 +119,29 @@ export const MapContainer: React.FC = () => {
         <button
           onClick={() => stepTime(-1)}
           style={{
-            background: 'rgba(18, 24, 38, 0.75)',
+            background: 'rgba(18, 21, 28, 0.85)',
             border: '1px solid rgba(255, 255, 255, 0.12)',
           }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
           title="Шаг назад (-120с)"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
-        {/* Button: ((•)) Live (Crimson glass styling from Image 3) */}
+        {/* Button: ((•)) Live (Soft red accent - ONLY live button has red accent) */}
         <button
           onClick={togglePlay}
           style={{
             background: isPlaying
-              ? 'rgba(40, 20, 25, 0.85)'
-              : 'rgba(65, 25, 25, 0.80)',
+              ? 'rgba(70, 20, 26, 0.70)'
+              : 'rgba(48, 16, 22, 0.65)',
             border: '1px solid rgba(244, 63, 94, 0.45)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+            boxShadow: '0 0 14px rgba(244, 63, 94, 0.25), 0 4px 12px rgba(0, 0, 0, 0.5)',
           }}
           className="px-4 py-1.5 rounded-lg text-xs font-sans font-bold text-rose-200 cursor-pointer backdrop-blur-md flex items-center gap-1.5 transition-all hover:brightness-110"
         >
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
           </span>
           <span>{isPlaying ? 'PAUSE' : '((•)) Live'}</span>
@@ -150,10 +150,10 @@ export const MapContainer: React.FC = () => {
         <button
           onClick={() => stepTime(1)}
           style={{
-            background: 'rgba(18, 24, 38, 0.75)',
+            background: 'rgba(18, 21, 28, 0.85)',
             border: '1px solid rgba(255, 255, 255, 0.12)',
           }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
           title="Шаг вперед (+120с)"
         >
           <ChevronRight className="w-3.5 h-3.5" />
@@ -162,23 +162,23 @@ export const MapContainer: React.FC = () => {
         <button
           onClick={() => setTime(0)}
           style={{
-            background: 'rgba(18, 24, 38, 0.75)',
+            background: 'rgba(18, 21, 28, 0.85)',
             border: '1px solid rgba(255, 255, 255, 0.12)',
           }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer backdrop-blur-md transition-colors"
           title="В начало (Reset)"
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>
 
-        {/* Button: 20:52:31 UTC (Separate dark rounded capsule from Image 3) */}
+        {/* Button: UTC Clock (Dark grey capsule with side rim lighting) */}
         <div
           style={{
-            background: 'rgba(18, 24, 38, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+            background: 'rgba(18, 21, 28, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
           }}
-          className="px-4 py-1.5 rounded-lg text-xs font-mono tabular-nums text-slate-200 font-semibold tracking-wider backdrop-blur-md"
+          className="px-4 py-1.5 rounded-lg text-xs font-mono tabular-nums text-zinc-200 font-semibold tracking-wider backdrop-blur-md"
         >
           {formatUTC(currentTime_s)}
         </div>

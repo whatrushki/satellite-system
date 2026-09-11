@@ -96,13 +96,15 @@ export const FleetSidebar: React.FC = () => {
           width: '280px',
           height: '100%',
           borderRadius: '20px',
-          background: 'rgba(12, 16, 26, 0.75)',
+          background: 'rgba(16, 19, 26, 0.85)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow:
+            '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
         }}
-        className="p-4 flex items-center justify-center text-xs font-mono text-slate-500 backdrop-blur-xl"
+        className="p-4 flex items-center justify-center text-xs font-mono text-zinc-500 backdrop-blur-xl"
       >
         <span>Loading constellation...</span>
       </div>
@@ -115,42 +117,44 @@ export const FleetSidebar: React.FC = () => {
         width: '280px',
         height: '100%',
         borderRadius: '20px',
-        background: 'rgba(12, 16, 26, 0.75)',
+        background: 'rgba(16, 19, 26, 0.85)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
+        boxShadow:
+          '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
       }}
       className="backdrop-blur-xl select-none font-mono shadow-2xl shrink-0"
     >
-      {/* 2. Header Section (Matches Image 2) */}
+      {/* 2. Header Section */}
       <div className="p-3.5 pb-2 border-b border-white/10 shrink-0">
         <div className="flex items-start justify-between">
           <div>
-            {/* Title: Satellite Fleet in sleek futuristic font */}
+            {/* Title: Satellite Fleet */}
             <h2 className="text-[14px] font-black tracking-wide text-white uppercase font-sans leading-none">
               Satellite Fleet
             </h2>
-            {/* Segmented dash line directly underneath (white, yellow, red accents like in Image 2) */}
+            {/* Segmented dash line directly underneath (monochrome with soft amber warning accent) */}
             <div className="flex items-center gap-1 mt-1.5">
               <div className="w-5 h-[2px] bg-white rounded-full"></div>
               <div className="w-5 h-[2px] bg-white/70 rounded-full"></div>
-              <div className="w-5 h-[2px] bg-amber-400 rounded-full"></div>
-              <div className="w-5 h-[2px] bg-rose-500 rounded-full"></div>
+              <div className="w-5 h-[2px] bg-amber-400/80 rounded-full"></div>
+              <div className="w-5 h-[2px] bg-zinc-500 rounded-full"></div>
             </div>
           </div>
 
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] font-mono text-emerald-400">
+            <span className="text-[10px] font-mono text-zinc-300">
               {activeSatsCount}/{totalSatsCount}
             </span>
 
             {/* Subtab switcher for Orbits / Outages */}
-            <div className="flex items-center gap-0.5 bg-slate-900/60 p-0.5 rounded-md border border-white/5 text-[9px] font-sans">
+            <div className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-md border border-white/5 text-[9px] font-sans">
               <button
                 onClick={() => setActiveTab('fleet')}
                 className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                  activeTab === 'fleet' ? 'bg-slate-800 text-white font-bold' : 'text-slate-400'
+                  activeTab === 'fleet' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400'
                 }`}
               >
                 Флот
@@ -158,7 +162,7 @@ export const FleetSidebar: React.FC = () => {
               <button
                 onClick={() => setActiveTab('orbits')}
                 className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                  activeTab === 'orbits' ? 'bg-slate-800 text-white font-bold' : 'text-slate-400'
+                  activeTab === 'orbits' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400'
                 }`}
               >
                 Орбиты
@@ -166,7 +170,7 @@ export const FleetSidebar: React.FC = () => {
               <button
                 onClick={() => setActiveTab('outages')}
                 className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                  activeTab === 'outages' ? 'bg-slate-800 text-white font-bold' : 'text-slate-400'
+                  activeTab === 'outages' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400'
                 }`}
               >
                 Отказы
@@ -177,9 +181,9 @@ export const FleetSidebar: React.FC = () => {
 
         {activeTab === 'fleet' && (
           <>
-            {/* 3. Mission mode header & 4-grid buttons (Exact replica of Image 2) */}
+            {/* 3. Mission mode header & 4-grid buttons */}
             <div className="mt-2.5">
-              <div className="text-[11px] font-semibold text-slate-300 font-sans mb-1.5">
+              <div className="text-[11px] font-semibold text-zinc-300 font-sans mb-1.5">
                 Mission mode
               </div>
               <div className="grid grid-cols-2 gap-1.5">
@@ -193,10 +197,10 @@ export const FleetSidebar: React.FC = () => {
                         isActive
                           ? {
                               background:
-                                'linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                              border: '1px solid rgba(255, 255, 255, 0.45)',
+                                'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                              border: '1px solid rgba(255, 255, 255, 0.40)',
                               boxShadow:
-                                'inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 8px rgba(0, 0, 0, 0.4)',
+                                'inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4)',
                               color: '#ffffff',
                               fontWeight: 700,
                               borderRadius: '8px',
@@ -207,7 +211,7 @@ export const FleetSidebar: React.FC = () => {
                           : {
                               background: 'rgba(255, 255, 255, 0.03)',
                               border: '1px solid rgba(255, 255, 255, 0.08)',
-                              color: '#94a3b8',
+                              color: '#a1a1aa',
                               borderRadius: '8px',
                               padding: '5px 8px',
                               fontSize: '11px',
@@ -223,7 +227,7 @@ export const FleetSidebar: React.FC = () => {
               </div>
             </div>
 
-            {/* Plane Filter Pills */}
+            {/* Plane Filter Pills (Monochrome) */}
             <div className="flex items-center gap-1 mt-2">
               {(['ALL', 'P1', 'P2', 'P3'] as const).map((p) => (
                 <button
@@ -231,8 +235,8 @@ export const FleetSidebar: React.FC = () => {
                   onClick={() => setPlaneFilter(p)}
                   className={`flex-1 py-0.5 rounded text-[9px] font-sans font-semibold transition-colors cursor-pointer border ${
                     planeFilter === p
-                      ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
-                      : 'bg-slate-900/40 text-slate-400 border-white/5 hover:bg-slate-800/40'
+                      ? 'bg-white/15 text-white border-white/30'
+                      : 'bg-white/5 text-zinc-400 border-white/5 hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {p}
@@ -270,17 +274,18 @@ export const FleetSidebar: React.FC = () => {
                     isSelected
                       ? {
                           borderRadius: '14px',
-                          background: 'rgba(22, 32, 51, 0.85)',
-                          border: '1px solid rgba(56, 189, 248, 0.65)',
-                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+                          background: 'rgba(28, 33, 44, 0.85)',
+                          border: '1px solid rgba(255, 255, 255, 0.35)',
+                          boxShadow:
+                            '0 4px 16px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
                         }
                       : {
                           borderRadius: '14px',
                           background: isInRoute
-                            ? 'rgba(6, 78, 59, 0.40)'
-                            : 'rgba(16, 22, 34, 0.65)',
+                            ? 'rgba(35, 40, 52, 0.75)'
+                            : 'rgba(18, 22, 30, 0.65)',
                           border: isInRoute
-                            ? '1px solid rgba(16, 185, 129, 0.45)'
+                            ? '1px solid rgba(255, 255, 255, 0.25)'
                             : '1px solid rgba(255, 255, 255, 0.08)',
                         }
                   }
@@ -289,7 +294,7 @@ export const FleetSidebar: React.FC = () => {
                   {/* Top Row: Icon + Name + Nominal Pill */}
                   <div className="flex items-start gap-2.5">
                     {/* 3D Satellite Icon Thumbnail */}
-                    <div className="w-10 h-10 rounded-lg bg-slate-950/80 border border-white/10 flex items-center justify-center shrink-0 text-slate-300">
+                    <div className="w-10 h-10 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center shrink-0 text-zinc-300">
                       <svg
                         width="22"
                         height="22"
@@ -341,26 +346,26 @@ export const FleetSidebar: React.FC = () => {
                         <span
                           className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-bold uppercase leading-none border ${
                             sat.active
-                              ? 'bg-slate-800/80 border-emerald-500/40 text-emerald-400'
-                              : 'bg-rose-950/80 border-rose-500/40 text-rose-400'
+                              ? 'bg-white/10 border-white/20 text-zinc-200'
+                              : 'bg-amber-950/40 border-amber-500/40 text-amber-300'
                           }`}
                         >
                           {sat.active ? 'Nominal' : 'Offline'}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mt-1">
+                      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono mt-1">
                         <span>Alt: {satAlt} km</span>
                         <span>{formatTimer(i)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Metrics Rows matching Image 2 (Signal segmented dashes, Battery segmented dashes) */}
+                  {/* Metrics Rows (Monochrome signal and battery segmented dashes) */}
                   <div className="mt-2 pt-2 border-t border-white/5 space-y-1.5 text-[9px]">
                     {/* Signal */}
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 uppercase font-sans text-[8px] w-12">
+                      <span className="text-zinc-400 uppercase font-sans text-[8px] w-12">
                         Signal
                       </span>
                       <div className="flex-1 flex items-center gap-[2px] px-1">
@@ -375,22 +380,22 @@ export const FleetSidebar: React.FC = () => {
                                 borderRadius: '1px',
                                 backgroundColor: isLit
                                   ? sat.active
-                                    ? '#38bdf8'
-                                    : '#ef4444'
-                                  : '#1e293b',
+                                    ? '#f4f4f5'
+                                    : '#f59e0b'
+                                  : '#27272a',
                               }}
                             />
                           )
                         })}
                       </div>
-                      <span className="text-slate-200 font-bold font-mono text-[9px] w-7 text-right">
+                      <span className="text-zinc-200 font-bold font-mono text-[9px] w-7 text-right">
                         {signalPct}%
                       </span>
                     </div>
 
                     {/* Battery */}
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 uppercase font-sans text-[8px] w-12">
+                      <span className="text-zinc-400 uppercase font-sans text-[8px] w-12">
                         Battery
                       </span>
                       <div className="flex-1 flex items-center gap-[2px] px-1">
@@ -405,15 +410,15 @@ export const FleetSidebar: React.FC = () => {
                                 borderRadius: '1px',
                                 backgroundColor: isLit
                                   ? sat.active
-                                    ? '#10b981'
+                                    ? '#d4d4d8'
                                     : '#f59e0b'
-                                  : '#1e293b',
+                                  : '#27272a',
                               }}
                             />
                           )
                         })}
                       </div>
-                      <span className="text-slate-200 font-bold font-mono text-[9px] w-7 text-right">
+                      <span className="text-zinc-200 font-bold font-mono text-[9px] w-7 text-right">
                         {batteryPct}%
                       </span>
                     </div>

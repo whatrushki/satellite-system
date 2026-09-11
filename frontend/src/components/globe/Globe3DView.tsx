@@ -108,7 +108,7 @@ export const Globe3DView: React.FC = () => {
     sunLight.position.set(26, 16, 22)
     scene.add(sunLight)
 
-    const spaceFill = new THREE.DirectionalLight(0x38bdf8, 0.20)
+    const spaceFill = new THREE.DirectionalLight(0x71717a, 0.20)
     spaceFill.position.set(-20, -10, -20)
     scene.add(spaceFill)
 
@@ -124,8 +124,8 @@ export const Globe3DView: React.FC = () => {
     const earthMat = new THREE.MeshPhongMaterial({
       map: earthMap,
       specularMap: specularMap,
-      specular: new THREE.Color(0x334455),
-      shininess: 25,
+      specular: new THREE.Color(0x27272a),
+      shininess: 20,
       normalMap: normalMap,
       normalScale: new THREE.Vector2(0.85, 0.85),
     })
@@ -138,7 +138,7 @@ export const Globe3DView: React.FC = () => {
     const cloudsMat = new THREE.MeshPhongMaterial({
       map: cloudsMap,
       transparent: true,
-      opacity: 0.82,
+      opacity: 0.80,
       blending: THREE.NormalBlending,
       depthWrite: false,
     })
@@ -147,13 +147,13 @@ export const Globe3DView: React.FC = () => {
     scene.add(cloudsMesh)
     cloudsMeshRef.current = cloudsMesh
 
-    // 3. Atmospheric Rim Glow (Rayleigh scattering)
+    // 3. Atmospheric Rim Glow (Monochrome cool white / silver)
     const atmoGeo = new THREE.SphereGeometry(EARTH_RADIUS * 1.025, 64, 64)
     const atmoMat = new THREE.ShaderMaterial({
       vertexShader: AtmosphereGlowShader.vertexShader,
       fragmentShader: AtmosphereGlowShader.fragmentShader,
       uniforms: {
-        color: { value: new THREE.Color(0x38bdf8) },
+        color: { value: new THREE.Color(0xdde5ed) },
         coefficient: { value: 0.52 },
         power: { value: 3.2 },
       },
@@ -164,8 +164,7 @@ export const Globe3DView: React.FC = () => {
     })
     scene.add(new THREE.Mesh(atmoGeo, atmoMat))
 
-    // 4. THE SPACEX ARCTIC COVERAGE DOME (CRITICAL HERO VISUAL)
-    // Geometry: Spherical cap covering latitudes from 66.5°N to 90.0°N (capAngle = ((90 - 66.5) * Math.PI) / 180)
+    // 4. THE SPACEX ARCTIC COVERAGE DOME (Monochrome silver cap)
     const capAngle = ((90 - 66.5) * Math.PI) / 180
     const domeGeo = new THREE.SphereGeometry(
       EARTH_RADIUS * 1.012,
@@ -177,9 +176,9 @@ export const Globe3DView: React.FC = () => {
       capAngle
     )
     const domeMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
+      color: 0xffffff,
       transparent: true,
-      opacity: 0.15,
+      opacity: 0.08,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -187,7 +186,7 @@ export const Globe3DView: React.FC = () => {
     const arcticDome = new THREE.Mesh(domeGeo, domeMat)
     scene.add(arcticDome)
 
-    // Phased-Array Beam Matrix (Starlink Cells): A THREE.Points lattice of 180 luminous dots randomly distributed across the cap sphere surface
+    // Phased-Array Beam Matrix (Starlink Cells): 180 subtle white luminous dots
     const dotCount = 180
     const dotPositions = new Float32Array(dotCount * 3)
     for (let d = 0; d < dotCount; d++) {
@@ -196,21 +195,21 @@ export const Globe3DView: React.FC = () => {
       const phi = Math.acos(1 - u * (1 - Math.cos(capAngle)))
       const r = EARTH_RADIUS * 1.014
       dotPositions[d * 3] = r * Math.sin(phi) * Math.cos(theta)
-      dotPositions[d * 3 + 1] = r * Math.cos(phi) // +Y is North Pole
+      dotPositions[d * 3 + 1] = r * Math.cos(phi)
       dotPositions[d * 3 + 2] = r * Math.sin(phi) * Math.sin(theta)
     }
     const dotsGeo = new THREE.BufferGeometry()
     dotsGeo.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3))
     const dotsMat = new THREE.PointsMaterial({
-      color: 0xbae6fd,
+      color: 0xffffff,
       size: 1.8,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.70,
       sizeAttenuation: false,
     })
     scene.add(new THREE.Points(dotsGeo, dotsMat))
 
-    // Arctic Boundary Contour Ring: A smooth 3D circular line around the perimeter of the 66.5°N circle (color: 0x38bdf8, linewidth: 1.5, opacity: 0.65)
+    // Arctic Boundary Contour Ring (White/Silver)
     const circleRingGeo = new THREE.BufferGeometry()
     const ringPts: THREE.Vector3[] = []
     const ringR = EARTH_RADIUS * 1.014 * Math.sin(capAngle)
@@ -221,9 +220,9 @@ export const Globe3DView: React.FC = () => {
     }
     circleRingGeo.setFromPoints(ringPts)
     const circleRingMat = new THREE.LineBasicMaterial({
-      color: 0x38bdf8,
+      color: 0xffffff,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.40,
       linewidth: 1.5,
     })
     scene.add(new THREE.LineLoop(circleRingGeo, circleRingMat))
@@ -355,14 +354,12 @@ export const Globe3DView: React.FC = () => {
       }
 
       const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPoints)
-      let ringColor = 0x38bdf8
-      if (plane.id === 'P2') ringColor = 0x818cf8
-      else if (plane.id === 'P3') ringColor = 0x34d399
+      const ringColor = plane.id === 'P2' ? 0xa1a1aa : plane.id === 'P3' ? 0x888888 : 0x71717a
 
       const ringMat = new THREE.LineBasicMaterial({
         color: ringColor,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.30,
       })
       group.add(new THREE.LineLoop(ringGeo, ringMat))
     }
@@ -382,7 +379,7 @@ export const Globe3DView: React.FC = () => {
     while (linksGroup.children.length > 0) linksGroup.remove(linksGroup.children[0])
     while (routeGroup.children.length > 0) routeGroup.remove(routeGroup.children[0])
 
-    // 1. Ground Stations on Earth Surface
+    // 1. Ground Stations on Earth Surface (Monochrome silver + subtle warm amber for active client)
     for (const g of activeScenario.ground_sites) {
       const [gx, gy, gz] = groundPosition(g.lat_deg, g.lon_deg)
       const pos = ecefToThree(gx, gy, gz)
@@ -391,7 +388,7 @@ export const Globe3DView: React.FC = () => {
 
       const pinGeo = new THREE.CylinderGeometry(0.02, 0.05, 0.15, 8)
       const pinMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xf59e0b : 0xd97706) : 0x818cf8,
+        color: isClient ? (isSelected ? 0xfbbf24 : 0xd97706) : 0xd4d4d8,
       })
       const pinMesh = new THREE.Mesh(pinGeo, pinMat)
       pinMesh.position.copy(pos)
@@ -400,7 +397,7 @@ export const Globe3DView: React.FC = () => {
 
       const dotGeo = new THREE.SphereGeometry(isClient ? 0.08 : 0.11, 10, 10)
       const dotMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xfcd34d : 0xf59e0b) : 0xa5b4fc,
+        color: isClient ? (isSelected ? 0xfde68a : 0xf59e0b) : 0xf4f4f5,
       })
       const dotMesh = new THREE.Mesh(dotGeo, dotMat)
       dotMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.12)))
@@ -411,18 +408,15 @@ export const Globe3DView: React.FC = () => {
 
     const satPosMap = new Map<string, THREE.Vector3>()
 
-    // 2. Satellites (48 Active Satellites rendered as matte geometric sphere nodes)
+    // 2. Satellites (48 Satellites: silver-white nodes, soft yellow warning for outages)
     const satGeo = new THREE.SphereGeometry(0.12, 16, 16)
     for (const sat of currentSnap.satellites) {
       const pos = ecefToThree(sat.x_km, sat.y_km, sat.z_km)
       satPosMap.set(sat.id, pos)
 
-      let color = 0x38bdf8
-      if (sat.plane_id === 'P2') color = 0x818cf8
-      else if (sat.plane_id === 'P3') color = 0x34d399
-
-      if (!sat.active) color = 0xef4444
-      if (activeRoutePath.includes(sat.id)) color = 0x22c55e
+      let color = 0xe4e4e7
+      if (!sat.active) color = 0xfbbf24 // Soft amber/yellow for outages (предупреждения)
+      if (activeRoutePath.includes(sat.id)) color = 0xffffff
 
       const isSelected = sat.id === selectedSatelliteId
       const satMat = new THREE.MeshBasicMaterial({ color })
@@ -430,15 +424,15 @@ export const Globe3DView: React.FC = () => {
       mesh.position.copy(pos)
       satGroup.add(mesh)
 
-      // Concentric double halo ring for selected satellite: THREE.RingGeometry(0.2, 0.25, 24)
+      // Concentric double halo ring for selected satellite
       if (isSelected) {
         // Inner Halo Ring
         const innerRingGeo = new THREE.RingGeometry(0.2, 0.25, 24)
         const innerRingMat = new THREE.MeshBasicMaterial({
-          color: 0x38bdf8,
+          color: 0xffffff,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.85,
         })
         const innerRingMesh = new THREE.Mesh(innerRingGeo, innerRingMat)
         innerRingMesh.position.copy(pos)
@@ -451,7 +445,7 @@ export const Globe3DView: React.FC = () => {
           color: 0xffffff,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.75,
+          opacity: 0.45,
         })
         const outerRingMesh = new THREE.Mesh(outerRingGeo, outerRingMat)
         outerRingMesh.position.copy(pos)
@@ -473,7 +467,7 @@ export const Globe3DView: React.FC = () => {
       const lineGeo = new THREE.BufferGeometry()
       lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linkPositions, 3))
       const lineMat = new THREE.LineBasicMaterial({
-        color: 0x64748b,
+        color: 0x52525b,
         transparent: true,
         opacity: 0.35,
       })
@@ -497,8 +491,8 @@ export const Globe3DView: React.FC = () => {
       if (routePoints.length >= 2) {
         const routeGeo = new THREE.BufferGeometry().setFromPoints(routePoints)
         const routeMat = new THREE.LineBasicMaterial({
-          color: 0x22c55e,
-          linewidth: 2.5,
+          color: 0xffffff,
+          linewidth: 2.0,
         })
         routeGroup.add(new THREE.Line(routeGeo, routeMat))
       }

@@ -387,37 +387,11 @@ export const PolarMapCanvas: React.FC = () => {
       {hoveredNode && (
         <div
           style={{ left: hoveredNode.x + 12, top: hoveredNode.y - 28 }}
-          className="absolute z-30 pointer-events-none bg-slate-900/95 border border-slate-700 rounded px-2.5 py-1 text-[11px] font-mono text-slate-100 shadow-md backdrop-blur-md"
+          className="absolute z-30 pointer-events-none bg-zinc-900/95 border border-zinc-700 rounded px-2.5 py-1 text-[11px] font-mono text-zinc-100 shadow-md backdrop-blur-md"
         >
           {hoveredNode.details}
         </div>
       )}
-
-      {/* Projection Overlay */}
-      <div className="absolute top-3 left-3 bg-slate-900/85 border border-slate-800 rounded px-2.5 py-1 text-[10px] text-slate-300 font-mono flex items-center gap-1.5 backdrop-blur-sm shadow-sm">
-        <span className="h-2 w-2 rounded-full bg-sky-400"></span>
-        ПОЛЯРНАЯ АЗИМУТАЛЬНАЯ ПРОЕКЦИЯ (90°N ЦЕНТР)
-      </div>
-
-      {/* Plane Colors Legend */}
-      <div className="absolute bottom-3 left-3 bg-slate-900/85 border border-slate-800 rounded px-2.5 py-1 text-[10px] font-mono flex items-center gap-3 backdrop-blur-sm shadow-sm">
-        <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-sky-400"></span>
-          <span className="text-slate-300">Плоскость 1</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
-          <span className="text-slate-300">Плоскость 2</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-          <span className="text-slate-300">Плоскость 3</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-rose-500"></span>
-          <span className="text-slate-400">Отказ</span>
-        </div>
-      </div>
     </div>
   )
 }

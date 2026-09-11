@@ -60,3 +60,16 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.85);
 }
+
+/* Dark grey floating window with soft side rim lighting */
+.scifi-panel {
+  background: rgba(18, 21, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.7),
+    -1px 0 14px rgba(255, 255, 255, 0.05),
+    1px 0 14px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+}

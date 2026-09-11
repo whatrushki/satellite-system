@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import { SimulationResult, SnapshotData } from '../core/types'
 import { runClientSimulation } from '../core/simulator'
 import { useScenarioStore } from './scenarioStore'
@@ -33,7 +33,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   playbackSpeed: 60,
   selectedClientId: 'C65',
   selectedSatelliteId: null,
-  viewMode: '2d',
+  viewMode: '3d',
   activeTab: 'dashboard',
   simulationResult: null,
   isCalculating: false,
