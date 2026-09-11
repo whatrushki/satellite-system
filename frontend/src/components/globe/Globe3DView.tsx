@@ -104,7 +104,7 @@ export const Globe3DView: React.FC = () => {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.25)
     scene.add(ambientLight)
 
-    const sunLight = new THREE.DirectionalLight(0xfffaee, 2.4)
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.4)
     sunLight.position.set(26, 16, 22)
     scene.add(sunLight)
 
@@ -119,16 +119,34 @@ export const Globe3DView: React.FC = () => {
     const normalMap = textureLoader.load('/earth_normal_2048.jpg')
     const cloudsMap = textureLoader.load('/earth_clouds_1024.png')
 
-    // 1. Photorealistic Earth Globe
+    // 1. Photorealistic Earth Globe with High-Contrast B&W Monochrome Filter
     const earthGeo = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64)
     const earthMat = new THREE.MeshPhongMaterial({
       map: earthMap,
       specularMap: specularMap,
-      specular: new THREE.Color(0x27272a),
-      shininess: 20,
+      specular: new THREE.Color(0x3f3f46),
+      shininess: 25,
       normalMap: normalMap,
       normalScale: new THREE.Vector2(0.85, 0.85),
     })
+
+    // Custom Shader Hook: Black & White Grayscale Filter for Earth
+    earthMat.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <map_fragment>',
+        `
+        #include <map_fragment>
+        #ifdef USE_MAP
+          // Grayscale luminosity conversion (ITU-R BT.709)
+          float earthLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          // Sleek aerospace monochrome contrast
+          earthLum = pow(earthLum, 1.15) * 1.05;
+          diffuseColor.rgb = vec3(earthLum);
+        #endif
+        `
+      )
+    }
+
     const earthMesh = new THREE.Mesh(earthGeo, earthMat)
     earthMesh.rotation.y = -Math.PI / 2
     scene.add(earthMesh)

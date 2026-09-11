@@ -128,54 +128,38 @@ export const FleetSidebar: React.FC = () => {
     >
       {/* 2. Header Section */}
       <div className="p-3.5 pb-2 border-b border-white/10 shrink-0">
-        <div className="flex items-start justify-between">
-          <div>
-            {/* Title: Satellite Fleet */}
-            <h2 className="text-[14px] font-black tracking-wide text-white uppercase font-sans leading-none">
-              Satellite Fleet
-            </h2>
-            {/* Segmented dash line directly underneath (monochrome) */}
-            <div className="flex items-center gap-1 mt-1.5">
-              <div className="w-5 h-[2px] bg-white rounded-full"></div>
-              <div className="w-5 h-[2px] bg-white/70 rounded-full"></div>
-              <div className="w-5 h-[2px] bg-white/40 rounded-full"></div>
-              <div className="w-5 h-[2px] bg-zinc-600 rounded-full"></div>
-            </div>
+        <div className="flex items-center justify-between">
+          {/* Subtab switcher for Fleet / Orbits / Outages */}
+          <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/8 text-[10px] font-sans">
+            <button
+              onClick={() => setActiveTab('fleet')}
+              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                activeTab === 'fleet' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Флот
+            </button>
+            <button
+              onClick={() => setActiveTab('orbits')}
+              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                activeTab === 'orbits' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Орбиты
+            </button>
+            <button
+              onClick={() => setActiveTab('outages')}
+              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                activeTab === 'outages' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Отказы
+            </button>
           </div>
 
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] font-mono text-zinc-300">
-              {activeSatsCount}/{totalSatsCount}
-            </span>
-
-            {/* Subtab switcher for Orbits / Outages */}
-            <div className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-md border border-white/5 text-[9px] font-sans">
-              <button
-                onClick={() => setActiveTab('fleet')}
-                className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                  activeTab === 'fleet' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400'
-                }`}
-              >
-                Флот
-              </button>
-              <button
-                onClick={() => setActiveTab('orbits')}
-                className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                  activeTab === 'orbits' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400'
-                }`}
-              >
-                Орбиты
-              </button>
-              <button
-                onClick={() => setActiveTab('outages')}
-                className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                  activeTab === 'outages' ? 'bg-white/15 text-white font-bold' : 'text-zinc-400'
-                }`}
-              >
-                Отказы
-              </button>
-            </div>
-          </div>
+          <span className="text-[10px] font-mono text-zinc-300 font-bold bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+            {activeSatsCount}/{totalSatsCount}
+          </span>
         </div>
 
         {activeTab === 'fleet' && (

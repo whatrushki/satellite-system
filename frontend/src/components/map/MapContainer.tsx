@@ -3,12 +3,13 @@ import { PolarMapCanvas } from './PolarMapCanvas'
 import { Globe3DView } from './Globe3DView'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { RotateCcw, ChevronLeft, ChevronRight, Radio, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { RotateCcw, ChevronLeft, ChevronRight, Radio, ShieldCheck, AlertTriangle, BarChart2 } from 'lucide-react'
 
 export const MapContainer: React.FC = () => {
   const {
     viewMode,
     setViewMode,
+    setActiveTab,
     simulationResult,
     currentTime_s,
     setTime,
@@ -169,6 +170,22 @@ export const MapContainer: React.FC = () => {
         >
           {formatUTC(currentTime_s)}
         </div>
+
+        {/* Button: Аналитика (Moved from top to bottom) */}
+        <button
+          onClick={() => setActiveTab('compare')}
+          style={{
+            background: 'rgba(18, 21, 28, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            boxShadow:
+              '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
+          }}
+          className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-bold text-zinc-300 hover:text-white cursor-pointer backdrop-blur-md transition-all flex items-center gap-1.5 hover:bg-white/10"
+          title="Сравнение и аналитика группировки"
+        >
+          <BarChart2 className="w-3.5 h-3.5 text-zinc-400" />
+          <span>Аналитика</span>
+        </button>
       </div>
     </div>
   )
