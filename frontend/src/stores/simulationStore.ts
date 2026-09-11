@@ -29,7 +29,7 @@ interface SimulationState {
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   currentTime_s: 0,
-  isPlaying: false,
+  isPlaying: true,
   playbackSpeed: 1,
   selectedClientId: 'C65',
   selectedSatelliteId: null,

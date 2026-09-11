@@ -73,70 +73,53 @@ export const MapContainer: React.FC = () => {
         {viewMode === '2d' ? <PolarMapCanvas /> : <Globe3DView />}
       </div>
 
-      {/* Floating Bottom Toolbar with Timeline Slider and Speed Controls */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 select-none font-mono pointer-events-auto">
+      {/* Floating Bottom Toolbar: Unified Transparent Tablet (Одна прозрачная таблетка) */}
+      <div
+        style={{
+          background: 'rgba(8, 11, 18, 0.30)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+        }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center p-1 px-3 gap-2.5 select-none font-mono pointer-events-auto rounded-full border border-transparent hover:border-white/20 transition-all duration-300"
+      >
         {/* 1. Segmented 2D / 3D Toggle */}
-        <div
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            boxShadow:
-              '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
-          }}
-          className="flex items-center p-0.5 rounded-lg backdrop-blur-md"
-        >
+        <div className="flex items-center h-7.5 p-0.5 rounded-full border border-transparent hover:border-white/20 transition-all">
           <button
             onClick={() => setViewMode('2d')}
-            style={
+            className={`h-full px-2.5 rounded-full text-[11px] font-sans font-bold cursor-pointer transition-all ${
               viewMode === '2d'
-                ? {
-                    background:
-                      'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                    border: '1px solid rgba(255, 255, 255, 0.40)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
-                    color: '#ffffff',
-                  }
-                : {
-                    color: '#a1a1aa',
-                  }
-            }
-            className="px-3 py-1 rounded-md text-xs font-sans font-bold cursor-pointer transition-all hover:text-white"
+                ? 'bg-white/20 text-white shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
           >
             2D
           </button>
           <button
             onClick={() => setViewMode('3d')}
-            style={
+            className={`h-full px-2.5 rounded-full text-[11px] font-sans font-bold cursor-pointer transition-all ${
               viewMode === '3d'
-                ? {
-                    background:
-                      'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                    border: '1px solid rgba(255, 255, 255, 0.40)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
-                    color: '#ffffff',
-                  }
-                : {
-                    color: '#a1a1aa',
-                  }
-            }
-            className="px-3 py-1 rounded-md text-xs font-sans font-bold cursor-pointer transition-all hover:text-white"
+                ? 'bg-white/20 text-white shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
           >
             3D
           </button>
         </div>
+
+        {/* Divider */}
+        <div className="h-4 w-[1px] bg-white/10" />
 
         {/* 2. Play/Pause: ((•)) Live in pale red */}
         <button
           onClick={togglePlay}
           style={{
             background: isPlaying
-              ? 'rgba(54, 26, 30, 0.75)'
-              : 'rgba(38, 20, 24, 0.65)',
-            border: '1px solid rgba(210, 130, 138, 0.38)',
-            boxShadow: '0 0 10px rgba(210, 130, 138, 0.15), 0 4px 12px rgba(0, 0, 0, 0.5)',
+              ? 'rgba(60, 24, 28, 0.50)'
+              : 'rgba(32, 16, 20, 0.35)',
             color: '#eed2d5',
           }}
-          className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-bold cursor-pointer backdrop-blur-md flex items-center gap-1.5 transition-all hover:brightness-110"
+          className="h-7.5 px-3.5 rounded-full text-xs font-sans font-bold cursor-pointer flex items-center gap-1.5 border border-transparent hover:border-[#d9828b]/60 transition-all hover:brightness-110"
         >
           <span className="relative flex h-2 w-2">
             <span
@@ -151,91 +134,86 @@ export const MapContainer: React.FC = () => {
           <span>{isPlaying ? 'PAUSE' : '((•)) Live'}</span>
         </button>
 
-        {/* 3. Speed Multiplier Switcher (1x, 2x, 5x, 10x) */}
-        <div
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.5)',
-          }}
-          className="flex items-center p-0.5 rounded-lg backdrop-blur-md"
-        >
-          {([1, 2, 5, 10] as const).map((spd) => (
-            <button
-              key={spd}
-              onClick={() => setPlaybackSpeed(spd)}
-              style={
-                playbackSpeed === spd
-                  ? {
-                      background:
-                        'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                      border: '1px solid rgba(255, 255, 255, 0.40)',
-                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
-                      color: '#ffffff',
-                    }
-                  : {
-                      color: '#a1a1aa',
-                    }
-              }
-              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-bold cursor-pointer transition-all hover:text-white"
-              title={`Скорость воспроизведения ${spd}x`}
-            >
-              {spd}x
-            </button>
-          ))}
+        {/* Divider */}
+        <div className="h-4 w-[1px] bg-white/10" />
+
+        {/* 3. Speed Multiplier: One Single Button with 1x, 2x, 5x, 10x, 15x, 20x, 30x, 50x, 100x */}
+        <div className="relative group">
+          <button
+            onClick={() => {
+              const SPEEDS = [1, 2, 5, 10, 15, 20, 30, 50, 100]
+              const curIdx = SPEEDS.indexOf(playbackSpeed)
+              const next = SPEEDS[(curIdx + 1) % SPEEDS.length]
+              setPlaybackSpeed(next)
+            }}
+            className="h-7.5 px-2.5 rounded-full border border-transparent hover:border-white/20 text-zinc-200 hover:text-white text-[11px] font-sans font-bold cursor-pointer transition-all hover:bg-white/10 flex items-center gap-1"
+            title="Ускорение: 1x, 2x, 5x, 10x, 15x, 20x, 30x, 50x, 100x (нажмите для смены)"
+          >
+            <span>{playbackSpeed}x</span>
+            <span className="text-[8px] text-zinc-400">▾</span>
+          </button>
+
+          {/* Quick Dropdown on Hover */}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col bg-[#0b0e17]/95 border border-white/20 rounded-xl p-1 shadow-2xl backdrop-blur-xl z-50 min-w-[70px]">
+            {[1, 2, 5, 10, 15, 20, 30, 50, 100].map((spd) => (
+              <button
+                key={spd}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPlaybackSpeed(spd)
+                }}
+                className={`px-2.5 py-0.5 rounded-md text-[10px] font-mono text-left cursor-pointer transition-colors ${
+                  playbackSpeed === spd
+                    ? 'bg-white/20 text-white font-bold'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {spd}x
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* 4. Timeline Slider (Ползунок вместо кнопок < и >) */}
-        <div
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            boxShadow:
-              '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
-          }}
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg backdrop-blur-md"
-        >
-          {/* Range Slider Track */}
-          <div className="relative flex items-center w-36 sm:w-48">
+        {/* Divider */}
+        <div className="h-4 w-[1px] bg-white/10" />
+
+        {/* 4. Timeline Slider (Плавный ползунок времени) */}
+        <div className="flex items-center h-7.5 gap-2 px-2 rounded-full border border-transparent hover:border-white/20 transition-all">
+          <div className="relative flex items-center w-36 sm:w-52">
             <input
               type="range"
               min={0}
               max={maxHorizon}
-              step={1}
+              step={0.5}
               value={currentTime_s}
               onChange={(e) => setTime(parseFloat(e.target.value))}
               style={{
-                background: `linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) ${progressPct}%, rgba(255, 255, 255, 0.15) ${progressPct}%, rgba(255, 255, 255, 0.15) 100%)`,
+                background: `linear-gradient(to right, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.85) ${progressPct}%, rgba(255, 255, 255, 0.15) ${progressPct}%, rgba(255, 255, 255, 0.15) 100%)`,
               }}
               className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-white transition-all hover:brightness-125"
             />
           </div>
 
-          {/* Real-time Clock */}
           <span className="text-[11px] font-mono tabular-nums text-zinc-200 font-bold tracking-wider shrink-0 min-w-[75px]">
             {formatUTC(currentTime_s)}
           </span>
 
-          {/* Reset button */}
           <button
             onClick={() => setTime(0)}
-            className="p-1 rounded-md text-zinc-400 hover:text-white cursor-pointer transition-colors"
-            title="В начало (Reset 00:00)"
+            className="p-1 rounded-full text-zinc-400 hover:text-white border border-transparent hover:border-white/20 cursor-pointer transition-all hover:bg-white/10"
+            title="В начало (Reset 00:00:00)"
           >
             <RotateCcw className="w-3 h-3" />
           </button>
         </div>
 
+        {/* Divider */}
+        <div className="h-4 w-[1px] bg-white/10" />
+
         {/* 5. Button: Аналитика */}
         <button
           onClick={() => setActiveTab('compare')}
-          style={{
-            background: 'rgba(18, 21, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            boxShadow:
-              '0 4px 14px rgba(0, 0, 0, 0.5), -1px 0 8px rgba(255, 255, 255, 0.04), 1px 0 8px rgba(255, 255, 255, 0.04)',
-          }}
-          className="px-3.5 py-1.5 rounded-lg text-xs font-sans font-bold text-zinc-300 hover:text-white cursor-pointer backdrop-blur-md transition-all flex items-center gap-1.5 hover:bg-white/10"
+          className="h-7.5 px-3 rounded-full text-[11px] font-sans font-bold text-zinc-300 hover:text-white cursor-pointer border border-transparent hover:border-white/20 transition-all flex items-center gap-1.5 hover:bg-white/10"
           title="Сравнение и аналитика группировки"
         >
           <BarChart2 className="w-3.5 h-3.5 text-zinc-400" />
