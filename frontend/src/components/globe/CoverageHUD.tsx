@@ -188,7 +188,7 @@ export const CoverageHUD: React.FC = () => {
                           </span>
                         </>
                       ) : (
-                        <span className="text-rose-400 font-semibold">ВНЕ ЗОНЫ (θ &lt; 10°)</span>
+                        <span className="text-rose-400 font-semibold">ВНЕ ЗОНЫ (θ &lt; {coverageElevation}°)</span>
                       )}
                     </div>
                   </div>
@@ -198,13 +198,13 @@ export const CoverageHUD: React.FC = () => {
             {/* Route Hop Type Info */}
             {isRouteConnected && (
               <div className="text-[10px] font-mono mt-1 pt-1 border-t border-white/5 flex items-center justify-between text-zinc-400">
-                <span>Тип маршрута:</span>
+                <span>Архитектура тракта:</span>
                 <span className={`font-semibold ${
                   coverageMetrics.activeRouteHopType === 'direct_single_hop' ? 'text-emerald-400' : 'text-cyan-400'
                 }`}>
                   {coverageMetrics.activeRouteHopType === 'direct_single_hop'
-                    ? '⚡ 1 КА (прямая ретрансляция)'
-                    : '🔗 N хопов через МИС (лазер)'}
+                    ? '1 КА (прямая радиолиния)'
+                    : 'Многоскачковый (МИС / лазер)'}
                 </span>
               </div>
             )}

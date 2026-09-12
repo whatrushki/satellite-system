@@ -405,12 +405,6 @@ export const FleetSidebar: React.FC = () => {
               const isArctic = latDeg >= 60.0
               const latStr = `${Math.abs(latDeg).toFixed(0)}°${latDeg >= 0 ? 'N' : 'S'}`
 
-              // Check if sat sees any gateway for single-hop direct relay
-              const visibleGateway = activeScenario.ground_sites
-                .filter((g) => g.role === 'gateway')
-                .find((gw) => (currentSnap?.elevation_deg[gw.id]?.[sat.id] ?? -90) >= minEl)
-              const isDirectRelay = isVisible && Boolean(visibleGateway)
-
               return (
                 <div
                   key={sat.id}
@@ -444,14 +438,6 @@ export const FleetSidebar: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {isDirectRelay && (
-                        <span
-                          className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-sans px-1.5 py-0.2 rounded uppercase"
-                          title="Прямой ретранслятор: видит абонента и шлюз одновременно"
-                        >
-                          ⚡ Реле
-                        </span>
-                      )}
                       {isInRoute && (
                         <span className="text-[8px] bg-emerald-400 text-zinc-950 font-bold font-sans px-1.5 py-0.2 rounded uppercase">
                           Маршрут
@@ -469,7 +455,7 @@ export const FleetSidebar: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Second line: Footprint Area + Nadir Position / Arctic indicator */}
+                  {/* Second line: Footprint Area + Nadir Position */}
                   <div className="flex items-center justify-between mt-1 text-[9.5px] text-zinc-400 font-mono pt-1 border-t border-white/5">
                     <div className="flex items-center gap-1">
                       <span className="text-zinc-500">Зона:</span>
@@ -483,13 +469,8 @@ export const FleetSidebar: React.FC = () => {
 
                     <div className="flex items-center gap-1">
                       <span className="text-zinc-500">Надир:</span>
-                      <span
-                        className={`font-semibold flex items-center gap-0.5 ${
-                          isArctic ? 'text-sky-300 font-bold' : 'text-zinc-300'
-                        }`}
-                      >
-                        {isArctic && <span title="В Арктике (≥60° с.ш.)">❄️</span>}
-                        <span>{latStr}</span>
+                      <span className="font-semibold text-zinc-300">
+                        {latStr}
                       </span>
                     </div>
                   </div>

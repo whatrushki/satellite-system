@@ -268,7 +268,6 @@ export const Globe3DView: React.FC = () => {
   const routeLineRef = useRef<THREE.Line | null>(null)
   const feederBadgeClientRef = useRef<THREE.Sprite | null>(null)
   const feederBadgeGatewayRef = useRef<THREE.Sprite | null>(null)
-  const routeTypeBadgeRef = useRef<THREE.Sprite | null>(null)
   const currentRoutePointsRef = useRef<THREE.Vector3[]>([])
   const packetMeshGroupRef = useRef<THREE.Group | null>(null)
 
@@ -1204,11 +1203,6 @@ export const Globe3DView: React.FC = () => {
     routeGroup.add(feederBadgeGateway)
     feederBadgeGatewayRef.current = feederBadgeGateway
 
-    const routeTypeBadge = createTextSprite('', '#34d399', 1.5, 0.25)
-    routeTypeBadge.visible = false
-    routeGroup.add(routeTypeBadge)
-    routeTypeBadgeRef.current = routeTypeBadge
-
     // 5. Animated Data Packets along the active route ("бегущие квадратики")
     const packetMeshGroup = new THREE.Group()
     routeGroup.add(packetMeshGroup)
@@ -1494,100 +1488,100 @@ export const Globe3DView: React.FC = () => {
       // Update active route and feeder link elevation badges
       if (routeLineRef.current) {
         if (activeRoutePath.length >= 2) {
-          const routePoints: THREE.Vector3[] = []
-          for (const nodeId of activeRoutePath) {
-            const gNode = activeScenario.ground_sites.find((g) => g.id === nodeId)
-            if (gNode) {
-              const [gx, gy, gz] = groundPosition(gNode.lat_deg, gNode.lon_deg)
-              routePoints.push(ecefToThree(gx, gy, gz))
-            } else {
-              const sPos = satPosMap.get(nodeId)
-              if (sPos) routePoints.push(sPos.clone())
-            }
-          }
-          const coords: number[] = []
-          for (const p of routePoints) {
-            coords.push(p.x, p.y, p.z)
-          }
-          const existingAttr = routeLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
-          if (!existingAttr || existingAttr.count !== routePoints.length) {
-            if (existingAttr) routeLineRef.current.geometry.deleteAttribute('position')
-            routeLineRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(coords, 3))
-          } else {
-            existingAttr.copyArray(coords)
-            existingAttr.needsUpdate = true
-          }
-          routeLineRef.current.visible = true
-          currentRoutePointsRef.current = routePoints
-
-          // Dynamic elevation badges on feeder links:
-          // Leg 1: Client -> First Satellite
           const clientSite = activeScenario.ground_sites.find((g) => g.id === activeRoutePath[0])
           const firstSat = positions.find((s) => s.id === activeRoutePath[1])
-          if (clientSite && firstSat && feederBadgeClientRef.current && routePoints.length >= 2) {
-            const [cgx, cgy, cgz] = groundPosition(clientSite.lat_deg, clientSite.lon_deg)
-            const elevClient = computeElevationDeg(cgx, cgy, cgz, firstSat.x_km, firstSat.y_km, firstSat.z_km)
-            const midP = routePoints[0].clone().lerp(routePoints[1], 0.45)
-            feederBadgeClientRef.current.position.copy(
-              midP.add(routePoints[0].clone().normalize().multiplyScalar(0.22))
-            )
-            const clCol = elevClient >= 25 ? '#10b981' : elevClient >= 10 ? '#38bdf8' : '#f59e0b'
-            const clText = elevClient >= 10
-              ? `θ_кл = ${elevClient.toFixed(1)}°`
-              : `θ_кл = ${elevClient.toFixed(1)}° (хендовер)`
-            const spriteTex = getOrCreateTextTexture(clText, clCol)
-            feederBadgeClientRef.current.material.map = spriteTex
-            feederBadgeClientRef.current.visible = true
-          } else if (feederBadgeClientRef.current) {
-            feederBadgeClientRef.current.visible = false
-          }
-
-          // Leg 2: Gateway <- Last Satellite
           const lastIndex = activeRoutePath.length - 1
           const gatewaySite = activeScenario.ground_sites.find((g) => g.id === activeRoutePath[lastIndex])
           const lastSat = positions.find((s) => s.id === activeRoutePath[lastIndex - 1])
-          if (gatewaySite && lastSat && feederBadgeGatewayRef.current && routePoints.length >= 2) {
-            const [ggx, ggy, ggz] = groundPosition(gatewaySite.lat_deg, gatewaySite.lon_deg)
-            const elevGtw = computeElevationDeg(ggx, ggy, ggz, lastSat.x_km, lastSat.y_km, lastSat.z_km)
-            const midP = routePoints[lastIndex].clone().lerp(routePoints[lastIndex - 1], 0.45)
-            feederBadgeGatewayRef.current.position.copy(
-              midP.add(routePoints[lastIndex].clone().normalize().multiplyScalar(0.22))
-            )
-            const gtwCol = elevGtw >= 25 ? '#10b981' : elevGtw >= 10 ? '#38bdf8' : '#f59e0b'
-            const gtwText = elevGtw >= 10
-              ? `θ_шл = ${elevGtw.toFixed(1)}°`
-              : `θ_шл = ${elevGtw.toFixed(1)}° (хендовер)`
-            const spriteTex = getOrCreateTextTexture(gtwText, gtwCol)
-            feederBadgeGatewayRef.current.material.map = spriteTex
-            feederBadgeGatewayRef.current.visible = true
-          } else if (feederBadgeGatewayRef.current) {
-            feederBadgeGatewayRef.current.visible = false
+          const curThreshold = coverageElevationRef.current ?? activeScenario.environment.min_elevation_deg ?? 10.0
+
+          let elevClient = -90
+          let clientInZone = false
+          if (clientSite && firstSat) {
+            const [cgx, cgy, cgz] = groundPosition(clientSite.lat_deg, clientSite.lon_deg)
+            elevClient = computeElevationDeg(cgx, cgy, cgz, firstSat.x_km, firstSat.y_km, firstSat.z_km)
+            clientInZone = elevClient >= curThreshold
           }
 
-          // Route Type Badge (Single-hop direct relay vs multi-hop laser ISL)
-          if (routeTypeBadgeRef.current && routePoints.length >= 2) {
-            const isSingleHop = activeRoutePath.length === 3 // Client -> 1 Sat -> Gateway
-            const midIdx = Math.floor(routePoints.length / 2)
-            const centerP = routePoints[midIdx].clone().add(
-              routePoints[midIdx].clone().normalize().multiplyScalar(0.50)
-            )
-            routeTypeBadgeRef.current.position.copy(centerP)
-            const typeLabel = isSingleHop
-              ? '⚡ 1 КА: ПРЯМАЯ РЕТРАНСЛЯЦИЯ'
-              : `🔗 МАРШРУТ: ${activeRoutePath.length - 2} ХОП(А) МИС`
-            const typeColor = isSingleHop ? '#10b981' : '#00f0ff'
-            const spriteTex = getOrCreateTextTexture(typeLabel, typeColor)
-            routeTypeBadgeRef.current.material.map = spriteTex
-            routeTypeBadgeRef.current.visible = true
-          } else if (routeTypeBadgeRef.current) {
-            routeTypeBadgeRef.current.visible = false
+          let elevGtw = -90
+          let gtwInZone = false
+          if (gatewaySite && lastSat) {
+            const [ggx, ggy, ggz] = groundPosition(gatewaySite.lat_deg, gatewaySite.lon_deg)
+            elevGtw = computeElevationDeg(ggx, ggy, ggz, lastSat.x_km, lastSat.y_km, lastSat.z_km)
+            gtwInZone = elevGtw >= curThreshold
+          }
+
+          // Route is only physically active and visible when stations are INSIDE the active coverage zone!
+          const isRouteActive = clientInZone && gtwInZone
+
+          if (isRouteActive) {
+            const routePoints: THREE.Vector3[] = []
+            for (const nodeId of activeRoutePath) {
+              const gNode = activeScenario.ground_sites.find((g) => g.id === nodeId)
+              if (gNode) {
+                const [gx, gy, gz] = groundPosition(gNode.lat_deg, gNode.lon_deg)
+                routePoints.push(ecefToThree(gx, gy, gz))
+              } else {
+                const sPos = satPosMap.get(nodeId)
+                if (sPos) routePoints.push(sPos.clone())
+              }
+            }
+            const coords: number[] = []
+            for (const p of routePoints) {
+              coords.push(p.x, p.y, p.z)
+            }
+            const existingAttr = routeLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
+            if (!existingAttr || existingAttr.count !== routePoints.length) {
+              if (existingAttr) routeLineRef.current.geometry.deleteAttribute('position')
+              routeLineRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(coords, 3))
+            } else {
+              existingAttr.copyArray(coords)
+              existingAttr.needsUpdate = true
+            }
+            routeLineRef.current.visible = true
+            currentRoutePointsRef.current = routePoints
+
+            // Dynamic elevation badges on feeder links:
+            // Leg 1: Client -> First Satellite
+            if (feederBadgeClientRef.current && routePoints.length >= 2) {
+              const midP = routePoints[0].clone().lerp(routePoints[1], 0.45)
+              feederBadgeClientRef.current.position.copy(
+                midP.add(routePoints[0].clone().normalize().multiplyScalar(0.22))
+              )
+              const clCol = elevClient >= 25 ? '#10b981' : '#38bdf8'
+              const clText = `θ_кл = ${elevClient.toFixed(1)}°`
+              const spriteTex = getOrCreateTextTexture(clText, clCol)
+              feederBadgeClientRef.current.material.map = spriteTex
+              feederBadgeClientRef.current.visible = true
+            } else if (feederBadgeClientRef.current) {
+              feederBadgeClientRef.current.visible = false
+            }
+
+            // Leg 2: Gateway <- Last Satellite
+            if (feederBadgeGatewayRef.current && routePoints.length >= 2) {
+              const midP = routePoints[lastIndex].clone().lerp(routePoints[lastIndex - 1], 0.45)
+              feederBadgeGatewayRef.current.position.copy(
+                midP.add(routePoints[lastIndex].clone().normalize().multiplyScalar(0.22))
+              )
+              const gtwCol = elevGtw >= 25 ? '#10b981' : '#38bdf8'
+              const gtwText = `θ_шл = ${elevGtw.toFixed(1)}°`
+              const spriteTex = getOrCreateTextTexture(gtwText, gtwCol)
+              feederBadgeGatewayRef.current.material.map = spriteTex
+              feederBadgeGatewayRef.current.visible = true
+            } else if (feederBadgeGatewayRef.current) {
+              feederBadgeGatewayRef.current.visible = false
+            }
+          } else {
+            routeLineRef.current.visible = false
+            currentRoutePointsRef.current = []
+            if (feederBadgeClientRef.current) feederBadgeClientRef.current.visible = false
+            if (feederBadgeGatewayRef.current) feederBadgeGatewayRef.current.visible = false
           }
         } else {
           routeLineRef.current.visible = false
           currentRoutePointsRef.current = []
           if (feederBadgeClientRef.current) feederBadgeClientRef.current.visible = false
           if (feederBadgeGatewayRef.current) feederBadgeGatewayRef.current.visible = false
-          if (routeTypeBadgeRef.current) routeTypeBadgeRef.current.visible = false
         }
       }
     },
