@@ -25,10 +25,10 @@ export const CoverageHUD: React.FC = () => {
     selectedClientId,
     coverageMode,
     setCoverageMode,
-    coverageElevation,
-    setCoverageElevation,
     setSelectedStation,
   } = useSimulationStore()
+
+  const minElevationDeg = activeScenario?.environment.min_elevation_deg ?? 10.0
 
   // Get active route for the currently selected client
   const step = simulationResult?.step_s || 120
@@ -38,11 +38,11 @@ export const CoverageHUD: React.FC = () => {
   const activeRoutePath = currentTimelineItem?.path || []
   const isRouteConnected = activeRoutePath.length >= 2
 
-  // Compute realtime coverage metrics at current time - synchronized with FleetSidebar
+  // Compute realtime coverage metrics at current time strictly using Orbit tab's min_elevation_deg
   const coverageMetrics = useMemo(() => {
     if (!activeScenario) return null
-    return getConstellationCoverage(activeScenario, currentTime_s, coverageElevation, activeRoutePath)
-  }, [activeScenario, currentTime_s, coverageElevation, activeRoutePath])
+    return getConstellationCoverage(activeScenario, currentTime_s, minElevationDeg, activeRoutePath)
+  }, [activeScenario, currentTime_s, minElevationDeg, activeRoutePath])
 
   if (!coverageMetrics) return null
 
@@ -187,7 +187,7 @@ export const CoverageHUD: React.FC = () => {
                           </span>
                         </>
                       ) : (
-                        <span className="text-rose-400 font-semibold">ВНЕ ЗОНЫ (θ &lt; {coverageElevation}°)</span>
+                        <span className="text-rose-400 font-semibold">ВНЕ ЗОНЫ (θ &lt; {minElevationDeg}°)</span>
                       )}
                     </div>
                   </div>
@@ -209,7 +209,7 @@ export const CoverageHUD: React.FC = () => {
             )}
           </div>
 
-          {/* Footprint settings: Radius, Angle, Display Mode */}
+          {/* Footprint settings: Mode & Angle Indicator */}
           <div className="flex items-center justify-between gap-1.5 text-[10px] font-mono">
             <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
               <span className="text-zinc-400 px-1">Режим:</span>
@@ -248,31 +248,13 @@ export const CoverageHUD: React.FC = () => {
               </button>
             </div>
 
-            {/* Elevation Angle Switcher */}
-            <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
-              <span className="text-zinc-400 px-0.5">Угол:</span>
-              <button
-                onClick={() => setCoverageElevation(25)}
-                className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
-                  coverageElevation === 25
-                    ? 'bg-emerald-500/25 text-emerald-200 font-bold'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-                title="Минимальный угол места 25° по ТЗ (радиус зоны ~940 км)"
-              >
-                25° ТЗ
-              </button>
-              <button
-                onClick={() => setCoverageElevation(10)}
-                className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
-                  coverageElevation === 10
-                    ? 'bg-sky-500/25 text-sky-200 font-bold'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-                title="Радиогоризонт 10° (радиус зоны ~1665 км)"
-              >
-                10° Гор.
-              </button>
+            {/* Orbit tab elevation angle badge */}
+            <div
+              className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-xl border border-white/10"
+              title="Минимальный угол места задаётся во вкладке 'Орбита'"
+            >
+              <span className="text-zinc-400">θ min:</span>
+              <span className="text-emerald-300 font-bold font-mono">{minElevationDeg}°</span>
             </div>
           </div>
 

@@ -12,7 +12,6 @@ interface SimulationState {
   selectedTarget: { type: 'sat' | 'ground'; id: string } | null
   viewMode: '2d' | '3d'
   coverageMode: 'all' | 'route' | 'off'
-  coverageElevation: 25 | 10
   activeTab: 'dashboard' | 'compare' | 'recommendations'
   simulationResult: SimulationResult | null
   isCalculating: boolean
@@ -29,7 +28,6 @@ interface SimulationState {
   clearSelection: () => void
   setViewMode: (mode: '2d' | '3d') => void
   setCoverageMode: (mode: 'all' | 'route' | 'off') => void
-  setCoverageElevation: (el: 25 | 10) => void
   setActiveTab: (tab: 'dashboard' | 'compare' | 'recommendations') => void
   recalculate: () => void
   getCurrentSnapshot: () => SnapshotData | null
@@ -44,7 +42,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   selectedTarget: null,
   viewMode: '3d',
   coverageMode: 'all',
-  coverageElevation: 10,
   activeTab: 'dashboard',
   simulationResult: null,
   isCalculating: false,
@@ -140,10 +137,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setCoverageMode: (mode: 'all' | 'route' | 'off') => {
     set({ coverageMode: mode })
-  },
-
-  setCoverageElevation: (el: 25 | 10) => {
-    set({ coverageElevation: el })
   },
 
   setActiveTab: (tab: 'dashboard' | 'compare' | 'recommendations') => {

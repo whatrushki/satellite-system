@@ -2,8 +2,9 @@ import React, { useRef, useEffect, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { groundPosition, computePositions } from '@/core/geometryEngine'
-import { computeFootprintAlpha, computeElevationDeg } from '@/core/coverageEngine'
+import { groundPosition, computePositions, computeSnapshot } from '@/core/geometryEngine'
+import { computeFootprintAlpha } from '@/core/coverageEngine'
+import { findRoute } from '@/core/router'
 import { AtmosphereGlowShader } from './AtmosphereShader'
 import { createStarfield } from './Starfield'
 import earthAtmosUrl from '@/assets/earth_atmos_2048.jpg'
@@ -185,21 +186,12 @@ export const Globe3DView: React.FC = () => {
     clearSelection,
     simulationResult,
     coverageMode,
-    coverageElevation,
   } = useSimulationStore()
 
   const coverageModeRef = useRef(coverageMode)
   useEffect(() => {
     coverageModeRef.current = coverageMode
   }, [coverageMode])
-
-  const coverageElevationRef = useRef(coverageElevation)
-  useEffect(() => {
-    coverageElevationRef.current = coverageElevation
-    if (updateRealtimePositionsRef.current) {
-      updateRealtimePositionsRef.current(currentTime_s)
-    }
-  }, [coverageElevation, currentTime_s])
 
   const selectedTargetRef = useRef(selectedTarget)
   const prevTargetRef = useRef(selectedTarget)
@@ -247,10 +239,8 @@ export const Globe3DView: React.FC = () => {
     innerRingMesh?: THREE.Mesh
     outerRingMesh?: THREE.Mesh
     groundTargetRing?: THREE.Mesh
-    footprintCap10?: THREE.Mesh
-    footprintRing10?: THREE.LineLoop
-    footprintCap25?: THREE.Mesh
-    footprintRing25?: THREE.LineLoop
+    footprintCap?: THREE.Mesh
+    footprintRing?: THREE.LineLoop
   }>>(new Map())
   const groundNodesMapRef = useRef<Map<string, {
     pinMesh: THREE.Mesh
@@ -780,53 +770,33 @@ export const Globe3DView: React.FC = () => {
     satNodesMapRef.current.clear()
     groundNodesMapRef.current.clear()
 
-    // Pre-calculate physical multi-tier footprint geometries
+    // Pre-calculate physical footprint geometry configured by Orbit tab
     const altitudeKm = activeScenario.environment.altitude_km || 550
-    // Tier 10: 10.0° threshold (physical radio horizon according to scenario, radius ~1665 km)
-    const tier10 = computeFootprintAlpha(altitudeKm, 10.0)
-    // Tier 25: 25.0° threshold (high-elevation reliable core, radius ~940 km)
-    const tier25 = computeFootprintAlpha(altitudeKm, 25.0)
+    const minElevationDeg = activeScenario.environment.min_elevation_deg ?? 10.0
+    const coverageTier = computeFootprintAlpha(altitudeKm, minElevationDeg)
 
-    const footprintCapGeo10 = new THREE.SphereGeometry(
+    const footprintCapGeo = new THREE.SphereGeometry(
       EARTH_RADIUS * 1.0025,
       32,
       8,
       0,
       Math.PI * 2,
       0,
-      tier10.alphaRad
+      coverageTier.alphaRad
     )
-    const capRingPts10: THREE.Vector3[] = []
-    const capR10 = EARTH_RADIUS * 1.003 * Math.sin(tier10.alphaRad)
-    const capY10 = EARTH_RADIUS * 1.003 * Math.cos(tier10.alphaRad)
+    const capRingPts: THREE.Vector3[] = []
+    const capR = EARTH_RADIUS * 1.003 * Math.sin(coverageTier.alphaRad)
+    const capY = EARTH_RADIUS * 1.003 * Math.cos(coverageTier.alphaRad)
     for (let a = 0; a <= 64; a++) {
       const rad = (a / 64) * Math.PI * 2
-      capRingPts10.push(new THREE.Vector3(capR10 * Math.cos(rad), capY10, capR10 * Math.sin(rad)))
+      capRingPts.push(new THREE.Vector3(capR * Math.cos(rad), capY, capR * Math.sin(rad)))
     }
-    const footprintRingGeo10 = new THREE.BufferGeometry().setFromPoints(capRingPts10)
-
-    const footprintCapGeo25 = new THREE.SphereGeometry(
-      EARTH_RADIUS * 1.0035,
-      32,
-      8,
-      0,
-      Math.PI * 2,
-      0,
-      tier25.alphaRad
-    )
-    const capRingPts25: THREE.Vector3[] = []
-    const capR25 = EARTH_RADIUS * 1.004 * Math.sin(tier25.alphaRad)
-    const capY25 = EARTH_RADIUS * 1.004 * Math.cos(tier25.alphaRad)
-    for (let a = 0; a <= 64; a++) {
-      const rad = (a / 64) * Math.PI * 2
-      capRingPts25.push(new THREE.Vector3(capR25 * Math.cos(rad), capY25, capR25 * Math.sin(rad)))
-    }
-    const footprintRingGeo25 = new THREE.BufferGeometry().setFromPoints(capRingPts25)
+    const footprintRingGeo = new THREE.BufferGeometry().setFromPoints(capRingPts)
 
     // 1. Ground Stations on Earth Surface (Interactive, Click-to-Select)
     const clientElev = currentSnap?.elevation_deg[selectedClientId] || {}
     const hasSatVis = Object.values(clientElev).some(
-      (el) => el >= (activeScenario.environment.min_elevation_deg || 10)
+      (el) => el >= minElevationDeg
     )
     const isConnected = activeRoutePath.length >= 2
 
@@ -863,7 +833,7 @@ export const Globe3DView: React.FC = () => {
         ? 0x10b981
         : 0x60a5fa
 
-      // Station Radio Horizon Field of View (1665 km boundary at theta = 10°)
+      // Station Radio Horizon Field of View boundary according to Orbit min_elevation_deg
       const stationRingMat = new THREE.LineDashedMaterial({
         color: isClient ? (isSelected ? 0x10b981 : 0x38bdf8) : 0x60a5fa,
         transparent: true,
@@ -871,7 +841,7 @@ export const Globe3DView: React.FC = () => {
         dashSize: 0.14,
         gapSize: 0.08,
       })
-      const stationHorizonRing = new THREE.LineLoop(footprintRingGeo10, stationRingMat)
+      const stationHorizonRing = new THREE.LineLoop(footprintRingGeo, stationRingMat)
       stationHorizonRing.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pos.clone().normalize())
       stationHorizonRing.computeLineDistances()
       satGroup.add(stationHorizonRing)
@@ -1012,52 +982,28 @@ export const Globe3DView: React.FC = () => {
       groundDot.userData = { type: 'satellite', id: sat.id }
       satGroup.add(groundDot)
 
-      // Dual-tier Real-time Footprint Caps & Contours on Earth Sphere:
-      // Tier 10: 10.0° Scenario Radio Horizon (1665 km radius)
-      const capMat10 = new THREE.MeshBasicMaterial({
+      // Real-time Footprint Cap & Contour on Earth Sphere configured by Orbit tab
+      const capMat = new THREE.MeshBasicMaterial({
         color: isInRoute ? 0x10b981 : isSelected ? 0x38bdf8 : 0x0284c7,
         transparent: true,
-        opacity: isInRoute ? 0.22 : isSelected ? 0.16 : 0.07,
+        opacity: isInRoute ? 0.25 : isSelected ? 0.18 : 0.08,
         side: THREE.FrontSide,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       })
-      const footprintCap10 = new THREE.Mesh(footprintCapGeo10, capMat10)
-      footprintCap10.userData = { type: 'satellite', id: sat.id }
-      if (coverageGroup) coverageGroup.add(footprintCap10)
+      const footprintCap = new THREE.Mesh(footprintCapGeo, capMat)
+      footprintCap.userData = { type: 'satellite', id: sat.id }
+      if (coverageGroup) coverageGroup.add(footprintCap)
 
-      const ringMat10 = new THREE.LineBasicMaterial({
+      const ringMat = new THREE.LineBasicMaterial({
         color: isInRoute ? 0x34d399 : isSelected ? 0x38bdf8 : 0x0284c7,
         transparent: true,
-        opacity: isInRoute ? 0.85 : isSelected ? 0.65 : 0.28,
-        linewidth: isInRoute ? 1.8 : 1.0,
+        opacity: isInRoute ? 0.85 : isSelected ? 0.70 : 0.35,
+        linewidth: isInRoute ? 2.0 : 1.0,
       })
-      const footprintRing10 = new THREE.LineLoop(footprintRingGeo10, ringMat10)
-      footprintRing10.userData = { type: 'satellite', id: sat.id }
-      if (coverageGroup) coverageGroup.add(footprintRing10)
-
-      // Tier 25: 25.0° High-Elevation Core (940 km radius)
-      const capMat25 = new THREE.MeshBasicMaterial({
-        color: isInRoute ? 0x059669 : isSelected ? 0x0284c7 : 0x0369a1,
-        transparent: true,
-        opacity: isInRoute ? 0.35 : isSelected ? 0.26 : 0.12,
-        side: THREE.FrontSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-      const footprintCap25 = new THREE.Mesh(footprintCapGeo25, capMat25)
-      footprintCap25.userData = { type: 'satellite', id: sat.id }
-      if (coverageGroup) coverageGroup.add(footprintCap25)
-
-      const ringMat25 = new THREE.LineBasicMaterial({
-        color: isInRoute ? 0x6ee7b7 : isSelected ? 0xffffff : 0x38bdf8,
-        transparent: true,
-        opacity: isInRoute ? 0.95 : isSelected ? 0.85 : 0.45,
-        linewidth: isInRoute ? 2.2 : 1.0,
-      })
-      const footprintRing25 = new THREE.LineLoop(footprintRingGeo25, ringMat25)
-      footprintRing25.userData = { type: 'satellite', id: sat.id }
-      if (coverageGroup) coverageGroup.add(footprintRing25)
+      const footprintRing = new THREE.LineLoop(footprintRingGeo, ringMat)
+      footprintRing.userData = { type: 'satellite', id: sat.id }
+      if (coverageGroup) coverageGroup.add(footprintRing)
 
       // Footprint ring on the Earth surface
       const groundRing = new THREE.Mesh(
@@ -1164,10 +1110,8 @@ export const Globe3DView: React.FC = () => {
         innerRingMesh,
         outerRingMesh,
         groundTargetRing,
-        footprintCap10,
-        footprintRing10,
-        footprintCap25,
-        footprintRing25,
+        footprintCap,
+        footprintRing,
       })
     }
 
@@ -1215,17 +1159,38 @@ export const Globe3DView: React.FC = () => {
       pMesh.visible = false
       packetMeshGroup.add(pMesh)
     }
-  }, [activeScenario, selectedClientId, selectedSatelliteId, selectedTarget, coverageElevation])
+  }, [activeScenario, selectedClientId, selectedSatelliteId, selectedTarget])
 
-  // Continuous real-time position update function
+  // Continuous real-time position and dynamic routing update function
   const updateRealtimePositions = useCallback(
     (t: number) => {
       if (!activeScenario || satNodesMapRef.current.size === 0) return
 
-      const positions = computePositions(activeScenario, t)
+      const liveSnap = computeSnapshot(activeScenario, t)
+      const positions = liveSnap.satellites
       const nextPositions = computePositions(activeScenario, t + 1.5)
       const nextPosMap = new Map(nextPositions.map((s) => [s.id, s]))
       const satPosMap = new Map<string, THREE.Vector3>()
+
+      // Determine available gateways (excluding active outages)
+      const liveGateways = new Set<string>()
+      for (const g of activeScenario.ground_sites) {
+        if (g.role === 'gateway') {
+          const isOffline = (activeScenario.gateway_outages || []).some(
+            (f) => f.gateway_id === g.id && f.start_s <= t && t < f.end_s
+          )
+          if (!isOffline) {
+            liveGateways.add(g.id)
+          }
+        }
+      }
+
+      // Compute dynamic real-time route for seamless satellite handovers
+      const liveRoute = selectedClientId
+        ? findRoute(liveSnap, activeScenario, selectedClientId, liveGateways)
+        : null
+      const liveRoutePath = liveRoute?.path || []
+      const isRouteActive = liveRoutePath.length >= 2
 
       const tempMatrix = new THREE.Matrix4()
       const tempUp = new THREE.Vector3()
@@ -1293,7 +1258,7 @@ export const Globe3DView: React.FC = () => {
 
           // Dynamically update satellite bus and tracker colors without rebuilding scene
           const isFailed = !sat.active
-          const isInRoute = activeRoutePath.includes(sat.id)
+          const isInRoute = liveRoutePath.includes(sat.id)
           const isSelected =
             selectedTargetRef.current?.type === 'sat' && selectedTargetRef.current.id === sat.id
           if (node.busMesh) {
@@ -1305,95 +1270,40 @@ export const Globe3DView: React.FC = () => {
             ;(node.trackerDot.material as THREE.MeshBasicMaterial).color.setHex(dotCol)
           }
 
-          // 7. Dynamic Real-time Dual-tier Footprint orientation and styling
-          if (node.footprintCap10 && node.footprintRing10 && node.footprintCap25 && node.footprintRing25) {
+          // 7. Dynamic Real-time Footprint orientation and styling
+          if (node.footprintCap && node.footprintRing) {
             const upVec = new THREE.Vector3(0, 1, 0)
-            node.footprintCap10.quaternion.setFromUnitVectors(upVec, radial)
-            node.footprintRing10.quaternion.setFromUnitVectors(upVec, radial)
-            node.footprintCap25.quaternion.setFromUnitVectors(upVec, radial)
-            node.footprintRing25.quaternion.setFromUnitVectors(upVec, radial)
+            node.footprintCap.quaternion.setFromUnitVectors(upVec, radial)
+            node.footprintRing.quaternion.setFromUnitVectors(upVec, radial)
 
             const curMode = coverageModeRef.current
-            const curElev = coverageElevationRef.current ?? 10
             const isBaseVisible = !(curMode === 'off' || isFailed || (curMode === 'route' && !isInRoute))
 
             if (!isBaseVisible) {
-              node.footprintCap10.visible = false
-              node.footprintRing10.visible = false
-              node.footprintCap25.visible = false
-              node.footprintRing25.visible = false
+              node.footprintCap.visible = false
+              node.footprintRing.visible = false
             } else {
-              const isElev10 = curElev <= 15
-              const capMat10 = node.footprintCap10.material as THREE.MeshBasicMaterial
-              const ringMat10 = node.footprintRing10.material as THREE.LineBasicMaterial
-              const capMat25 = node.footprintCap25.material as THREE.MeshBasicMaterial
-              const ringMat25 = node.footprintRing25.material as THREE.LineBasicMaterial
+              node.footprintCap.visible = true
+              node.footprintRing.visible = true
 
-              if (isElev10) {
-                // 10° HORIZON MODE (R = 1665 km) - Big, wide, prominent coverage cap
-                node.footprintCap10.visible = true
-                node.footprintRing10.visible = true
-                node.footprintCap25.visible = true
-                node.footprintRing25.visible = true
+              const capMat = node.footprintCap.material as THREE.MeshBasicMaterial
+              const ringMat = node.footprintRing.material as THREE.LineBasicMaterial
 
-                if (isInRoute) {
-                  capMat10.color.setHex(0x10b981)
-                  capMat10.opacity = 0.28
-                  ringMat10.color.setHex(0x34d399)
-                  ringMat10.opacity = 0.95
-
-                  capMat25.color.setHex(0x059669)
-                  capMat25.opacity = 0.14
-                  ringMat25.color.setHex(0x6ee7b7)
-                  ringMat25.opacity = 0.50
-                } else if (isSelected) {
-                  capMat10.color.setHex(0x38bdf8)
-                  capMat10.opacity = 0.22
-                  ringMat10.color.setHex(0xffffff)
-                  ringMat10.opacity = 0.85
-
-                  capMat25.color.setHex(0x0284c7)
-                  capMat25.opacity = 0.10
-                  ringMat25.color.setHex(0x38bdf8)
-                  ringMat25.opacity = 0.40
-                } else {
-                  capMat10.color.setHex(0x0284c7)
-                  capMat10.opacity = 0.10
-                  ringMat10.color.setHex(0x0284c7)
-                  ringMat10.opacity = 0.40
-
-                  capMat25.color.setHex(0x0369a1)
-                  capMat25.opacity = 0.04
-                  ringMat25.color.setHex(0x38bdf8)
-                  ringMat25.opacity = 0.18
-                }
+              if (isInRoute) {
+                capMat.color.setHex(0x10b981)
+                capMat.opacity = 0.28
+                ringMat.color.setHex(0x34d399)
+                ringMat.opacity = 0.95
+              } else if (isSelected) {
+                capMat.color.setHex(0x38bdf8)
+                capMat.opacity = 0.22
+                ringMat.color.setHex(0xffffff)
+                ringMat.opacity = 0.85
               } else {
-                // 25° CORE SLA MODE (R = 940 km) - Circles visibly shrink to compact core!
-                // 10° cap is hidden; 10° ring is clearly shown for route satellites so user sees the 10° horizon boundary!
-                node.footprintCap10.visible = false
-                node.footprintRing10.visible = true
-                ringMat10.color.setHex(isInRoute ? 0x10b981 : isSelected ? 0x38bdf8 : 0x52525b)
-                ringMat10.opacity = isInRoute ? 0.70 : isSelected ? 0.40 : 0.15
-
-                node.footprintCap25.visible = true
-                node.footprintRing25.visible = true
-
-                if (isInRoute) {
-                  capMat25.color.setHex(0x10b981)
-                  capMat25.opacity = 0.38
-                  ringMat25.color.setHex(0x34d399)
-                  ringMat25.opacity = 0.95
-                } else if (isSelected) {
-                  capMat25.color.setHex(0x38bdf8)
-                  capMat25.opacity = 0.30
-                  ringMat25.color.setHex(0xffffff)
-                  ringMat25.opacity = 0.90
-                } else {
-                  capMat25.color.setHex(0x0284c7)
-                  capMat25.opacity = 0.16
-                  ringMat25.color.setHex(0x38bdf8)
-                  ringMat25.opacity = 0.55
-                }
+                capMat.color.setHex(0x0284c7)
+                capMat.opacity = 0.08
+                ringMat.color.setHex(0x0284c7)
+                ringMat.opacity = 0.35
               }
             }
           }
@@ -1402,17 +1312,24 @@ export const Globe3DView: React.FC = () => {
 
       satPosMapRef.current = satPosMap
 
-      // Dynamically update ground sites status and colors without scene rebuild
+      // Dynamically update ground sites status and colors in real-time
+      const clientElevations = (selectedClientId && liveSnap.elevation_deg[selectedClientId]) || {}
+      const hasSatVis = Object.entries(clientElevations).some(([sid, el]) => {
+        const s = positions.find((sat) => sat.id === sid)
+        return s?.active && el >= (activeScenario.environment.min_elevation_deg ?? 10.0)
+      })
+
       for (const g of activeScenario.ground_sites) {
         const gNode = groundNodesMapRef.current.get(g.id)
         if (!gNode) continue
+
         const isOffline =
           g.role === 'gateway' &&
           (activeScenario.gateway_outages || []).some(
             (f) => f.gateway_id === g.id && f.start_s <= t && t < f.end_s
           )
         const isReceiving =
-          activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+          isRouteActive && liveRoutePath[liveRoutePath.length - 1] === g.id
         const isClient = g.role === 'client'
         const isSelected =
           selectedTargetRef.current?.type === 'ground'
@@ -1423,9 +1340,11 @@ export const Globe3DView: React.FC = () => {
           ? 0xef4444
           : isClient
           ? isSelected
-            ? activeRoutePath.length >= 2
+            ? isRouteActive
               ? 0x10b981
-              : 0xf59e0b
+              : hasSatVis
+              ? 0xf59e0b
+              : 0xef4444
             : 0xa1a1aa
           : isReceiving
           ? 0x10b981
@@ -1463,13 +1382,15 @@ export const Globe3DView: React.FC = () => {
       }
 
       // Update ISL links with buffer reuse
-      if (islLineRef.current && currentSnap) {
+      if (islLineRef.current) {
         const linkPositions: number[] = []
-        for (const [u, v] of currentSnap.edges) {
-          const posU = satPosMap.get(u)
-          const posV = satPosMap.get(v)
-          if (posU && posV) {
-            linkPositions.push(posU.x, posU.y, posU.z, posV.x, posV.y, posV.z)
+        for (const [u, v] of liveSnap.edges) {
+          if (!u.startsWith('C') && !u.startsWith('G') && !v.startsWith('C') && !v.startsWith('G')) {
+            const posU = satPosMap.get(u)
+            const posV = satPosMap.get(v)
+            if (posU && posV) {
+              linkPositions.push(posU.x, posU.y, posU.z, posV.x, posV.y, posV.z)
+            }
           }
         }
         const existingAttr = islLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
@@ -1487,95 +1408,69 @@ export const Globe3DView: React.FC = () => {
 
       // Update active route and feeder link elevation badges
       if (routeLineRef.current) {
-        if (activeRoutePath.length >= 2) {
-          const clientSite = activeScenario.ground_sites.find((g) => g.id === activeRoutePath[0])
-          const firstSat = positions.find((s) => s.id === activeRoutePath[1])
-          const lastIndex = activeRoutePath.length - 1
-          const gatewaySite = activeScenario.ground_sites.find((g) => g.id === activeRoutePath[lastIndex])
-          const lastSat = positions.find((s) => s.id === activeRoutePath[lastIndex - 1])
-          const curThreshold = coverageElevationRef.current ?? activeScenario.environment.min_elevation_deg ?? 10.0
-
-          let elevClient = -90
-          let clientInZone = false
-          if (clientSite && firstSat) {
-            const [cgx, cgy, cgz] = groundPosition(clientSite.lat_deg, clientSite.lon_deg)
-            elevClient = computeElevationDeg(cgx, cgy, cgz, firstSat.x_km, firstSat.y_km, firstSat.z_km)
-            clientInZone = elevClient >= curThreshold
-          }
-
-          let elevGtw = -90
-          let gtwInZone = false
-          if (gatewaySite && lastSat) {
-            const [ggx, ggy, ggz] = groundPosition(gatewaySite.lat_deg, gatewaySite.lon_deg)
-            elevGtw = computeElevationDeg(ggx, ggy, ggz, lastSat.x_km, lastSat.y_km, lastSat.z_km)
-            gtwInZone = elevGtw >= curThreshold
-          }
-
-          // Route is only physically active and visible when stations are INSIDE the active coverage zone!
-          const isRouteActive = clientInZone && gtwInZone
-
-          if (isRouteActive) {
-            const routePoints: THREE.Vector3[] = []
-            for (const nodeId of activeRoutePath) {
-              const gNode = activeScenario.ground_sites.find((g) => g.id === nodeId)
-              if (gNode) {
-                const [gx, gy, gz] = groundPosition(gNode.lat_deg, gNode.lon_deg)
-                routePoints.push(ecefToThree(gx, gy, gz))
-              } else {
-                const sPos = satPosMap.get(nodeId)
-                if (sPos) routePoints.push(sPos.clone())
-              }
-            }
-            const coords: number[] = []
-            for (const p of routePoints) {
-              coords.push(p.x, p.y, p.z)
-            }
-            const existingAttr = routeLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
-            if (!existingAttr || existingAttr.count !== routePoints.length) {
-              if (existingAttr) routeLineRef.current.geometry.deleteAttribute('position')
-              routeLineRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(coords, 3))
+        if (isRouteActive) {
+          const routePoints: THREE.Vector3[] = []
+          for (const nodeId of liveRoutePath) {
+            const gNode = activeScenario.ground_sites.find((g) => g.id === nodeId)
+            if (gNode) {
+              const [gx, gy, gz] = groundPosition(gNode.lat_deg, gNode.lon_deg)
+              routePoints.push(ecefToThree(gx, gy, gz))
             } else {
-              existingAttr.copyArray(coords)
-              existingAttr.needsUpdate = true
+              const sPos = satPosMap.get(nodeId)
+              if (sPos) routePoints.push(sPos.clone())
             }
-            routeLineRef.current.visible = true
-            currentRoutePointsRef.current = routePoints
-
-            // Dynamic elevation badges on feeder links:
-            // Leg 1: Client -> First Satellite
-            if (feederBadgeClientRef.current && routePoints.length >= 2) {
-              const midP = routePoints[0].clone().lerp(routePoints[1], 0.45)
-              feederBadgeClientRef.current.position.copy(
-                midP.add(routePoints[0].clone().normalize().multiplyScalar(0.22))
-              )
-              const clCol = elevClient >= 25 ? '#10b981' : '#38bdf8'
-              const clText = `θ_кл = ${elevClient.toFixed(1)}°`
-              const spriteTex = getOrCreateTextTexture(clText, clCol)
-              feederBadgeClientRef.current.material.map = spriteTex
-              feederBadgeClientRef.current.visible = true
-            } else if (feederBadgeClientRef.current) {
-              feederBadgeClientRef.current.visible = false
-            }
-
-            // Leg 2: Gateway <- Last Satellite
-            if (feederBadgeGatewayRef.current && routePoints.length >= 2) {
-              const midP = routePoints[lastIndex].clone().lerp(routePoints[lastIndex - 1], 0.45)
-              feederBadgeGatewayRef.current.position.copy(
-                midP.add(routePoints[lastIndex].clone().normalize().multiplyScalar(0.22))
-              )
-              const gtwCol = elevGtw >= 25 ? '#10b981' : '#38bdf8'
-              const gtwText = `θ_шл = ${elevGtw.toFixed(1)}°`
-              const spriteTex = getOrCreateTextTexture(gtwText, gtwCol)
-              feederBadgeGatewayRef.current.material.map = spriteTex
-              feederBadgeGatewayRef.current.visible = true
-            } else if (feederBadgeGatewayRef.current) {
-              feederBadgeGatewayRef.current.visible = false
-            }
+          }
+          const coords: number[] = []
+          for (const p of routePoints) {
+            coords.push(p.x, p.y, p.z)
+          }
+          const existingAttr = routeLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
+          if (!existingAttr || existingAttr.count !== routePoints.length) {
+            if (existingAttr) routeLineRef.current.geometry.deleteAttribute('position')
+            routeLineRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(coords, 3))
           } else {
-            routeLineRef.current.visible = false
-            currentRoutePointsRef.current = []
-            if (feederBadgeClientRef.current) feederBadgeClientRef.current.visible = false
-            if (feederBadgeGatewayRef.current) feederBadgeGatewayRef.current.visible = false
+            existingAttr.copyArray(coords)
+            existingAttr.needsUpdate = true
+          }
+          routeLineRef.current.visible = true
+          currentRoutePointsRef.current = routePoints
+
+          // Dynamic elevation badges on feeder links:
+          const firstSatId = liveRoutePath[1]
+          const elevClient = liveSnap.elevation_deg[selectedClientId]?.[firstSatId] ?? 0
+          const lastIndex = liveRoutePath.length - 1
+          const lastGtwId = liveRoutePath[lastIndex]
+          const lastSatId = liveRoutePath[lastIndex - 1]
+          const elevGtw = liveSnap.elevation_deg[lastGtwId]?.[lastSatId] ?? 0
+
+          // Leg 1: Client -> First Satellite
+          if (feederBadgeClientRef.current && routePoints.length >= 2) {
+            const midP = routePoints[0].clone().lerp(routePoints[1], 0.45)
+            feederBadgeClientRef.current.position.copy(
+              midP.add(routePoints[0].clone().normalize().multiplyScalar(0.22))
+            )
+            const clCol = elevClient >= 25 ? '#10b981' : '#38bdf8'
+            const clText = `θ_кл = ${elevClient.toFixed(1)}°`
+            const spriteTex = getOrCreateTextTexture(clText, clCol)
+            feederBadgeClientRef.current.material.map = spriteTex
+            feederBadgeClientRef.current.visible = true
+          } else if (feederBadgeClientRef.current) {
+            feederBadgeClientRef.current.visible = false
+          }
+
+          // Leg 2: Gateway <- Last Satellite
+          if (feederBadgeGatewayRef.current && routePoints.length >= 2) {
+            const midP = routePoints[lastIndex].clone().lerp(routePoints[lastIndex - 1], 0.45)
+            feederBadgeGatewayRef.current.position.copy(
+              midP.add(routePoints[lastIndex].clone().normalize().multiplyScalar(0.22))
+            )
+            const gtwCol = elevGtw >= 25 ? '#10b981' : '#38bdf8'
+            const gtwText = `θ_шл = ${elevGtw.toFixed(1)}°`
+            const spriteTex = getOrCreateTextTexture(gtwText, gtwCol)
+            feederBadgeGatewayRef.current.material.map = spriteTex
+            feederBadgeGatewayRef.current.visible = true
+          } else if (feederBadgeGatewayRef.current) {
+            feederBadgeGatewayRef.current.visible = false
           }
         } else {
           routeLineRef.current.visible = false
@@ -1585,7 +1480,7 @@ export const Globe3DView: React.FC = () => {
         }
       }
     },
-    [activeScenario, currentSnap, activeRoutePath]
+    [activeScenario, selectedClientId]
   )
 
   // Keep ref up to date for animate loop
@@ -1593,10 +1488,10 @@ export const Globe3DView: React.FC = () => {
     updateRealtimePositionsRef.current = updateRealtimePositions
   }, [updateRealtimePositions])
 
-  // Trigger continuous position update whenever currentTime_s or coverageElevation changes
+  // Trigger continuous position update whenever currentTime_s changes
   useEffect(() => {
     updateRealtimePositions(currentTime_s)
-  }, [currentTime_s, coverageElevation, updateRealtimePositions])
+  }, [currentTime_s, updateRealtimePositions])
 
   return (
     <div className="relative w-full h-full select-none overflow-hidden bg-[#06080d]">

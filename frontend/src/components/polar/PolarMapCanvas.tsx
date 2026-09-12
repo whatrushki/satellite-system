@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useMemo } from 'react'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { computePositions } from '@/core/geometryEngine'
+import { computePositions, computeSnapshot } from '@/core/geometryEngine'
 import { computeFootprintAlpha } from '@/core/coverageEngine'
+import { findRoute } from '@/core/router'
 
 export const PolarMapCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -18,7 +19,6 @@ export const PolarMapCanvas: React.FC = () => {
     clearSelection,
     simulationResult,
     coverageMode,
-    coverageElevation,
   } = useSimulationStore()
 
   const [hoveredNode, setHoveredNode] = useState<{
@@ -29,23 +29,38 @@ export const PolarMapCanvas: React.FC = () => {
     details: string
   } | null>(null)
 
-  // Current snapshot from simulation result
-  const step = simulationResult?.step_s || 120
-  const idx = Math.floor(currentTime_s / step)
-  const currentSnap =
-    simulationResult?.snapshots[Math.min(idx, (simulationResult?.snapshots.length || 1) - 1)]
+  const minEl = activeScenario?.environment.min_elevation_deg ?? 10.0
 
-  // Current route for selected client
-  const clientData = simulationResult?.clients.find((c) => c.client_id === selectedClientId)
-  const currentTimelineItem = clientData?.timeline.find((item) => item.t_s === idx * step)
-  const activeRoutePath = currentTimelineItem?.path || []
+  // Real-time snapshot computed dynamically for currentTime_s
+  const liveSnap = useMemo(() => {
+    if (!activeScenario) return null
+    return computeSnapshot(activeScenario, currentTime_s)
+  }, [activeScenario, currentTime_s])
 
-  // Direct line-of-sight check
-  const clientElev = currentSnap?.elevation_deg[selectedClientId] || {}
-  const hasSatVis = Object.values(clientElev).some(
-    (el) => el >= (activeScenario?.environment.min_elevation_deg || 10)
-  )
+  // Real-time dynamic route for selected client with seamless handovers
+  const liveRoute = useMemo(() => {
+    if (!activeScenario || !selectedClientId || !liveSnap) return null
+    const gtwSet = new Set<string>()
+    for (const g of activeScenario.ground_sites) {
+      if (g.role === 'gateway') {
+        const isOffline = (activeScenario.gateway_outages || []).some(
+          (f) => f.gateway_id === g.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+        )
+        if (!isOffline) gtwSet.add(g.id)
+      }
+    }
+    return findRoute(liveSnap, activeScenario, selectedClientId, gtwSet)
+  }, [activeScenario, currentTime_s, selectedClientId, liveSnap])
+
+  const activeRoutePath = liveRoute?.path || []
   const isConnected = activeRoutePath.length >= 2
+
+  // Direct line-of-sight check against live satellite positions and elevation
+  const clientElev = liveSnap?.elevation_deg[selectedClientId] || {}
+  const hasSatVis = Object.entries(clientElev).some(([sid, el]) => {
+    const sat = liveSnap?.satellites.find((s) => s.id === sid)
+    return sat?.active && el >= minEl
+  })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -281,18 +296,16 @@ export const PolarMapCanvas: React.FC = () => {
     }
 
     // 4. Inter-Satellite Links (ISL Mesh) and Real-Time Satellites
-    const liveSats = activeScenario
-      ? computePositions(activeScenario, currentTime_s)
-      : currentSnap?.satellites || []
+    const liveSats = liveSnap?.satellites || (activeScenario ? computePositions(activeScenario, currentTime_s) : [])
 
-    if (currentSnap && activeScenario) {
+    if (liveSnap && activeScenario) {
       const satMap = new Map(liveSats.map((s) => [s.id, s]))
 
       ctx.save()
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.22)'
       ctx.lineWidth = 0.75
 
-      for (const [u, v] of currentSnap.edges) {
+      for (const [u, v] of liveSnap.edges) {
         const satU = satMap.get(u)
         const satV = satMap.get(v)
 
@@ -405,7 +418,7 @@ export const PolarMapCanvas: React.FC = () => {
 
       // 6. Draw Satellites (Clean matte circles + Real-time Coverage Footprints)
       const altKm = activeScenario?.environment.altitude_km || 550
-      const { alphaDeg } = computeFootprintAlpha(altKm, coverageElevation || 25)
+      const { alphaDeg } = computeFootprintAlpha(altKm, minEl)
       const fpPx = maxRadius * (alphaDeg / (90 - minLat))
 
       for (const sat of liveSats) {
@@ -513,10 +526,10 @@ export const PolarMapCanvas: React.FC = () => {
     selectedSatelliteId,
     selectedTarget,
     hoveredNode,
-    currentSnap,
+    liveSnap,
     activeRoutePath,
     coverageMode,
-    coverageElevation,
+    minEl,
   ])
 
   // Mouse interaction: Hover & Click
@@ -613,12 +626,15 @@ export const PolarMapCanvas: React.FC = () => {
                 : 'bg-rose-500 shadow-[0_0_8px_#ef4444]'
             }`}
           />
-          <span>{selectedClientId} ({clientData?.name || 'Абонент'})</span>
+          <span>
+            {selectedClientId} (
+            {activeScenario?.ground_sites.find((g) => g.id === selectedClientId)?.name || 'Абонент'})
+          </span>
         </div>
         <span className="text-zinc-500">──</span>
         <div className="flex items-center gap-1 text-[11px]">
           <span className={hasSatVis ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}>
-            {hasSatVis ? '● Радио OK' : '✕ Нет КА (β < 10°)'}
+            {hasSatVis ? '● Радио OK' : `✕ Нет КА (θ < ${minEl}°)`}
           </span>
         </div>
         <span className="text-zinc-500">──</span>

@@ -64,4 +64,4 @@ Thumbs.db
 *.swp
 *.swo
 .eslintcache
-.agents
+.agents/

@@ -5,7 +5,8 @@ import { OrbitConfigurator } from '@/components/sidebar/OrbitConfigurator'
 import { OutageManager } from '@/components/sidebar/OutageManager'
 import { Radio, Network, CheckCircle2, XCircle, MapPin, Server, Signal } from 'lucide-react'
 import { getConstellationCoverage } from '@/core/coverageEngine'
-import { computePositions } from '@/core/geometryEngine'
+import { computePositions, computeSnapshot } from '@/core/geometryEngine'
+import { findRoute } from '@/core/router'
 
 export const FleetSidebar: React.FC = () => {
   const activeScenario = useScenarioStore((state) => state.activeScenario)
@@ -20,28 +21,32 @@ export const FleetSidebar: React.FC = () => {
     selectedClientId,
     coverageMode,
     setCoverageMode,
-    coverageElevation,
-    setCoverageElevation,
   } = useSimulationStore()
 
   const [planeFilter, setPlaneFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL')
   const [activeTab, setActiveTab] = useState<'fleet' | 'stations' | 'orbits' | 'outages'>('fleet')
 
-  const step = simulationResult?.step_s || 120
-  const idx = Math.floor(currentTime_s / step)
-  const currentSnap = useMemo(() => {
-    if (!simulationResult?.snapshots || simulationResult.snapshots.length === 0) return null
-    return simulationResult.snapshots[Math.min(idx, simulationResult.snapshots.length - 1)]
-  }, [simulationResult, idx])
+  const minEl = activeScenario?.environment.min_elevation_deg ?? 10.0
 
-  const clientData = useMemo(() => {
-    return simulationResult?.clients.find((c) => c.client_id === selectedClientId)
-  }, [simulationResult, selectedClientId])
+  const liveSnap = useMemo(() => {
+    if (!activeScenario) return null
+    return computeSnapshot(activeScenario, currentTime_s)
+  }, [activeScenario, currentTime_s])
 
-  const activeRoutePath = useMemo(() => {
-    const currentTimelineItem = clientData?.timeline.find((item) => item.t_s === idx * step)
-    return currentTimelineItem?.path || []
-  }, [clientData, idx, step])
+  const liveRoutePath = useMemo(() => {
+    if (!activeScenario || !selectedClientId || !liveSnap) return []
+    const gtwSet = new Set<string>()
+    for (const g of activeScenario.ground_sites) {
+      if (g.role === 'gateway') {
+        const isOffline = (activeScenario.gateway_outages || []).some(
+          (f) => f.gateway_id === g.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+        )
+        if (!isOffline) gtwSet.add(g.id)
+      }
+    }
+    const route = findRoute(liveSnap, activeScenario, selectedClientId, gtwSet)
+    return route?.path || []
+  }, [activeScenario, currentTime_s, selectedClientId, liveSnap])
 
   const currentPositions = useMemo(() => {
     if (!activeScenario) return []
@@ -65,15 +70,15 @@ export const FleetSidebar: React.FC = () => {
   // Pre-calculate ISL counts per sat
   const islCounts = useMemo(() => {
     const counts = new Map<string, number>()
-    if (!currentSnap) return counts
-    for (const [u, v] of currentSnap.edges) {
+    if (!liveSnap) return counts
+    for (const [u, v] of liveSnap.edges) {
       if (!u.startsWith('C') && !u.startsWith('G') && !v.startsWith('C') && !v.startsWith('G')) {
         counts.set(u, (counts.get(u) || 0) + 1)
         counts.set(v, (counts.get(v) || 0) + 1)
       }
     }
     return counts
-  }, [currentSnap])
+  }, [liveSnap])
 
   const satConfigMap = useMemo(() => {
     const map = new Map<string, { plane_id: string; slot_deg: number; launch_batch: number }>()
@@ -86,8 +91,8 @@ export const FleetSidebar: React.FC = () => {
 
   const coverageMetrics = useMemo(() => {
     if (!activeScenario) return null
-    return getConstellationCoverage(activeScenario, currentTime_s, coverageElevation, activeRoutePath)
-  }, [activeScenario, currentTime_s, coverageElevation, activeRoutePath])
+    return getConstellationCoverage(activeScenario, currentTime_s, minEl, liveRoutePath)
+  }, [activeScenario, currentTime_s, minEl, liveRoutePath])
 
   const singleSatAreaMkm2 = coverageMetrics?.singleFootprintAreaMkm2 ?? 8.7
   const singleSatRadiusKm = coverageMetrics?.footprintRadiusKm ?? 1665
@@ -110,8 +115,6 @@ export const FleetSidebar: React.FC = () => {
       </div>
     )
   }
-
-  const minEl = activeScenario.environment.min_elevation_deg
 
   return (
     <div
@@ -214,9 +217,9 @@ export const FleetSidebar: React.FC = () => {
                     (f) => f.gateway_id === gw.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
                   )
                   const isSelected = selectedTarget?.type === 'ground' && selectedTarget.id === gw.id
-                  const elevMap = currentSnap?.elevation_deg[gw.id] || {}
+                  const elevMap = liveSnap?.elevation_deg[gw.id] || {}
                   const visibleSats = Object.entries(elevMap).filter(
-                    ([sid, el]) => el >= minEl && currentSnap?.satellites.find((s) => s.id === sid)?.active
+                    ([sid, el]) => el >= minEl && liveSnap?.satellites.find((s) => s.id === sid)?.active
                   )
 
                   return (
@@ -290,10 +293,16 @@ export const FleetSidebar: React.FC = () => {
                     (selectedTarget?.type === 'ground' && selectedTarget.id === cl.id) ||
                     (!selectedTarget && selectedClientId === cl.id)
                   const clientSummary = simulationResult?.clients.find((c) => c.client_id === cl.id)
-                  const curItem = clientSummary?.timeline.find((t) => t.t_s === idx * step)
-                  const isConn = curItem?.status === 'connected'
-                  const elevMap = currentSnap?.elevation_deg[cl.id] || {}
-                  const hasVis = Object.values(elevMap).some((el) => el >= minEl)
+                  const elevMap = liveSnap?.elevation_deg[cl.id] || {}
+                  const hasVis = Object.entries(elevMap).some(
+                    ([sid, el]) => el >= minEl && liveSnap?.satellites.find((s) => s.id === sid)?.active
+                  )
+                  const isConn =
+                    cl.id === selectedClientId
+                      ? liveRoutePath.length >= 2
+                      : Boolean(
+                          clientSummary?.timeline.find((t) => t.t_s === Math.floor(currentTime_s / (simulationResult?.step_s || 120)) * (simulationResult?.step_s || 120))?.status === 'connected'
+                        )
 
                   return (
                     <div
@@ -427,33 +436,10 @@ export const FleetSidebar: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Elevation Angle Selector */}
+                  {/* Dynamic Orbit Tab Elevation Indicator */}
                   <div className="flex items-center justify-between gap-1 bg-black/40 px-2 py-1 rounded-lg border border-white/5">
-                    <span className="text-zinc-400 font-mono text-[9px]">Угол:</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setCoverageElevation(25)}
-                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                          coverageElevation === 25
-                            ? 'bg-emerald-500/25 text-emerald-200 font-bold border border-emerald-500/30'
-                            : 'text-zinc-400 hover:text-white'
-                        }`}
-                        title="Минимальный угол места 25° ТЗ (радиус зоны ~940 км)"
-                      >
-                        25° ТЗ
-                      </button>
-                      <button
-                        onClick={() => setCoverageElevation(10)}
-                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                          coverageElevation === 10
-                            ? 'bg-sky-500/25 text-sky-200 font-bold border border-sky-500/30'
-                            : 'text-zinc-400 hover:text-white'
-                        }`}
-                        title="Радиогоризонт 10° (радиус зоны ~1665 км)"
-                      >
-                        10° Гор.
-                      </button>
-                    </div>
+                    <span className="text-zinc-400 font-mono text-[9px]">Угол места (орбита):</span>
+                    <span className="text-emerald-400 font-bold font-mono text-[10px]">{minEl}°</span>
                   </div>
                 </div>
               </div>
@@ -462,9 +448,9 @@ export const FleetSidebar: React.FC = () => {
             {/* List of satellite cards with per-satellite coverage telemetry */}
             {satsList.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId
-              const isInRoute = activeRoutePath.includes(sat.id)
+              const isInRoute = liveRoutePath.includes(sat.id)
               const cfg = satConfigMap.get(sat.id)
-              const elev = currentSnap?.elevation_deg[selectedClientId]?.[sat.id] ?? null
+              const elev = liveSnap?.elevation_deg[selectedClientId]?.[sat.id] ?? null
               const isVisible = elev != null && elev >= minEl && sat.active
               const linksCount = islCounts.get(sat.id) || 0
 
