@@ -1375,11 +1375,11 @@ export const Globe3DView: React.FC = () => {
                 }
               } else {
                 // 25° CORE SLA MODE (R = 940 km) - Circles visibly shrink to compact core!
-                // 10° cap is hidden, 10° ring is faint guide
+                // 10° cap is hidden; 10° ring is clearly shown for route satellites so user sees the 10° horizon boundary!
                 node.footprintCap10.visible = false
                 node.footprintRing10.visible = true
-                ringMat10.color.setHex(0x52525b)
-                ringMat10.opacity = 0.15
+                ringMat10.color.setHex(isInRoute ? 0x10b981 : isSelected ? 0x38bdf8 : 0x52525b)
+                ringMat10.opacity = isInRoute ? 0.70 : isSelected ? 0.40 : 0.15
 
                 node.footprintCap25.visible = true
                 node.footprintRing25.visible = true
@@ -1531,10 +1531,11 @@ export const Globe3DView: React.FC = () => {
             feederBadgeClientRef.current.position.copy(
               midP.add(routePoints[0].clone().normalize().multiplyScalar(0.22))
             )
-            const spriteTex = getOrCreateTextTexture(
-              `θ_кл = ${elevClient.toFixed(1)}°`,
-              elevClient >= 25 ? '#10b981' : '#38bdf8'
-            )
+            const clCol = elevClient >= 25 ? '#10b981' : elevClient >= 10 ? '#38bdf8' : '#f59e0b'
+            const clText = elevClient >= 10
+              ? `θ_кл = ${elevClient.toFixed(1)}°`
+              : `θ_кл = ${elevClient.toFixed(1)}° (хендовер)`
+            const spriteTex = getOrCreateTextTexture(clText, clCol)
             feederBadgeClientRef.current.material.map = spriteTex
             feederBadgeClientRef.current.visible = true
           } else if (feederBadgeClientRef.current) {
@@ -1552,10 +1553,11 @@ export const Globe3DView: React.FC = () => {
             feederBadgeGatewayRef.current.position.copy(
               midP.add(routePoints[lastIndex].clone().normalize().multiplyScalar(0.22))
             )
-            const spriteTex = getOrCreateTextTexture(
-              `θ_шл = ${elevGtw.toFixed(1)}°`,
-              elevGtw >= 25 ? '#10b981' : '#38bdf8'
-            )
+            const gtwCol = elevGtw >= 25 ? '#10b981' : elevGtw >= 10 ? '#38bdf8' : '#f59e0b'
+            const gtwText = elevGtw >= 10
+              ? `θ_шл = ${elevGtw.toFixed(1)}°`
+              : `θ_шл = ${elevGtw.toFixed(1)}° (хендовер)`
+            const spriteTex = getOrCreateTextTexture(gtwText, gtwCol)
             feederBadgeGatewayRef.current.material.map = spriteTex
             feederBadgeGatewayRef.current.visible = true
           } else if (feederBadgeGatewayRef.current) {
