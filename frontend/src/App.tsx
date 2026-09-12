@@ -51,7 +51,7 @@ export const App: React.FC = () => {
           </ErrorBoundary>
 
           {/* 3. Floating Left Sidebar: Satellite Fleet */}
-          <div className="absolute left-4 top-16 bottom-[148px] w-[280px] z-20 pointer-events-auto">
+          <div className="absolute left-4 top-16 bottom-[168px] w-[280px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Флот аппаратов">
               <FleetSidebar />
             </ErrorBoundary>

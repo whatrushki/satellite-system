@@ -136,8 +136,34 @@ function createSatelliteModel(
   beacon.userData = { type: 'satellite', id: satId }
   group.add(beacon)
 
-  group.userData = { type: 'satellite', id: satId }
+  group.userData = { type: 'satellite', id: satId, bus }
   return group
+}
+
+function disposeHierarchy(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    if (child instanceof THREE.Mesh || child instanceof THREE.Line || child instanceof THREE.Sprite) {
+      if (child.geometry) {
+        child.geometry.dispose()
+      }
+      if (Array.isArray(child.material)) {
+        child.material.forEach((m) => {
+          if (m.map) m.map.dispose()
+          m.dispose()
+        })
+      } else if (child.material) {
+        if (child.material.map) child.material.map.dispose()
+        child.material.dispose()
+      }
+    }
+  })
+}
+
+function clearGroup(group: THREE.Group) {
+  disposeHierarchy(group)
+  while (group.children.length > 0) {
+    group.remove(group.children[0])
+  }
 }
 
 export const Globe3DView: React.FC = () => {
@@ -193,12 +219,18 @@ export const Globe3DView: React.FC = () => {
     groundRing: THREE.Mesh
     radialBeam: THREE.Line
     satModel: THREE.Group
+    busMesh?: THREE.Mesh
     arcMesh: THREE.Mesh
     trackerDot: THREE.Mesh
     label: THREE.Sprite
     innerRingMesh?: THREE.Mesh
     outerRingMesh?: THREE.Mesh
     groundTargetRing?: THREE.Mesh
+  }>>(new Map())
+  const groundNodesMapRef = useRef<Map<string, {
+    pinMesh: THREE.Mesh
+    dotMesh: THREE.Mesh
+    ringMesh?: THREE.Mesh
   }>>(new Map())
   const updateRealtimePositionsRef = useRef<((t: number) => void) | null>(null)
   const islLineRef = useRef<THREE.LineSegments | null>(null)
@@ -450,19 +482,17 @@ export const Globe3DView: React.FC = () => {
 
     const onMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        // Rotating map with mouse cancels satellite follow and deselects target
         const dragDist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y)
+        const dx = e.clientX - prevMousePos.x
+        const dy = e.clientY - prevMousePos.y
+        prevMousePos = { x: e.clientX, y: e.clientY }
+
         if (dragDist > 6 && selectedTargetRef.current) {
           selectedTargetRef.current = null
           shouldResetToOverviewRef.current = false
           useSimulationStore.getState().clearSelection()
-          controlsTargetRef.current.set(0, 0, 0)
-          spherical.setFromVector3(camera.position)
+          spherical.setFromVector3(camera.position.clone().sub(controlsTargetRef.current))
         }
-
-        const dx = e.clientX - prevMousePos.x
-        const dy = e.clientY - prevMousePos.y
-        prevMousePos = { x: e.clientX, y: e.clientY }
 
         spherical.theta -= dx * 0.007
         spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi - dy * 0.007))
@@ -534,6 +564,15 @@ export const Globe3DView: React.FC = () => {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+
+      // Zooming out while following an object smoothly breaks follow and returns to overview
+      if (selectedTargetRef.current && e.deltaY > 0) {
+        selectedTargetRef.current = null
+        useSimulationStore.getState().clearSelection()
+        shouldResetToOverviewRef.current = true
+        return
+      }
+
       shouldResetToOverviewRef.current = false
       const minR = selectedTargetRef.current ? 1.5 : 8.0
       spherical.radius = Math.max(minR, Math.min(60, spherical.radius + e.deltaY * 0.015))
@@ -601,8 +640,8 @@ export const Globe3DView: React.FC = () => {
 
       if (currentTarget) {
         if (!isDraggingRef.current) {
-          controlsTargetRef.current.lerp(targetLookAt, 0.06)
-          camera.position.lerp(targetCamPos, 0.06)
+          controlsTargetRef.current.lerp(targetLookAt, 0.04)
+          camera.position.lerp(targetCamPos, 0.04)
           camera.lookAt(controlsTargetRef.current)
           spherical.setFromVector3(camera.position.clone().sub(controlsTargetRef.current))
         } else {
@@ -611,17 +650,19 @@ export const Globe3DView: React.FC = () => {
       } else if (shouldResetToOverviewRef.current) {
         targetLookAt.set(0, 0, 0)
         targetCamPos.set(0, 15, 20)
-        controlsTargetRef.current.lerp(targetLookAt, 0.06)
-        camera.position.lerp(targetCamPos, 0.06)
+        controlsTargetRef.current.lerp(targetLookAt, 0.035)
+        camera.position.lerp(targetCamPos, 0.035)
         camera.lookAt(controlsTargetRef.current)
         spherical.setFromVector3(camera.position)
-        if (camera.position.distanceTo(targetCamPos) < 0.25) {
+        if (camera.position.distanceTo(targetCamPos) < 0.15 && controlsTargetRef.current.lengthSq() < 0.01) {
           shouldResetToOverviewRef.current = false
         }
       } else {
         if (controlsTargetRef.current.lengthSq() > 0.0005) {
-          controlsTargetRef.current.lerp(new THREE.Vector3(0, 0, 0), 0.06)
-          camera.lookAt(controlsTargetRef.current)
+          controlsTargetRef.current.lerp(new THREE.Vector3(0, 0, 0), 0.035)
+          if (!isDraggingRef.current) {
+            camera.lookAt(controlsTargetRef.current)
+          }
         }
       }
 
@@ -673,6 +714,24 @@ export const Globe3DView: React.FC = () => {
       window.removeEventListener('mouseup', onMouseUp)
       dom.removeEventListener('wheel', onWheel)
       window.removeEventListener('resize', onResize)
+
+      // Fully dispose GPU textures, geometries, and materials
+      earthGeo.dispose()
+      earthMat.dispose()
+      earthMap.dispose()
+      specularMap.dispose()
+      normalMap.dispose()
+      cloudsGeo.dispose()
+      cloudsMat.dispose()
+      cloudsMap.dispose()
+      stars.geometry.dispose()
+      ;(stars.material as THREE.Material).dispose()
+
+      if (satGroupRef.current) clearGroup(satGroupRef.current)
+      if (linksGroupRef.current) clearGroup(linksGroupRef.current)
+      if (routeGroupRef.current) clearGroup(routeGroupRef.current)
+      if (orbitRingsGroupRef.current) clearGroup(orbitRingsGroupRef.current)
+
       renderer.dispose()
     }
   }, [])
@@ -686,7 +745,7 @@ export const Globe3DView: React.FC = () => {
   useEffect(() => {
     if (!orbitRingsGroupRef.current || !activeScenario) return
     const group = orbitRingsGroupRef.current
-    while (group.children.length > 0) group.remove(group.children[0])
+    clearGroup(group)
 
     const rOrbit = 6.921 // (6371 + 550) * 0.001
     const incRad = (activeScenario.environment.inclination_deg * Math.PI) / 180
@@ -733,9 +792,11 @@ export const Globe3DView: React.FC = () => {
     const routeGroup = routeGroupRef.current
 
     // Clear previous
-    while (satGroup.children.length > 0) satGroup.remove(satGroup.children[0])
-    while (linksGroup.children.length > 0) linksGroup.remove(linksGroup.children[0])
-    while (routeGroup.children.length > 0) routeGroup.remove(routeGroup.children[0])
+    clearGroup(satGroup)
+    clearGroup(linksGroup)
+    clearGroup(routeGroup)
+    satNodesMapRef.current.clear()
+    groundNodesMapRef.current.clear()
 
     // 1. Ground Stations on Earth Surface (Interactive, Click-to-Select)
     const clientElev = currentSnap?.elevation_deg[selectedClientId] || {}
@@ -796,19 +857,20 @@ export const Globe3DView: React.FC = () => {
       satGroup.add(dotMesh)
 
       // Ground Target Ring if Outage, Selected or Receiving
-      if (isGatewayOffline || isSelected || isReceiving) {
-        const ringGeo = new THREE.RingGeometry(0.24, 0.30, 32)
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: isGatewayOffline ? 0xef4444 : statusColorHex,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.90,
-        })
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat)
-        ringMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.04)))
-        ringMesh.lookAt(pos.clone().multiplyScalar(2))
-        satGroup.add(ringMesh)
-      }
+      const ringGeo = new THREE.RingGeometry(0.24, 0.30, 32)
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: isGatewayOffline ? 0xef4444 : statusColorHex,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.90,
+      })
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat)
+      ringMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.04)))
+      ringMesh.lookAt(pos.clone().multiplyScalar(2))
+      ringMesh.visible = isGatewayOffline || isSelected || isReceiving
+      satGroup.add(ringMesh)
+
+      groundNodesMapRef.current.set(g.id, { pinMesh, dotMesh, ringMesh })
 
       // Floating text label above ground station
       const labelText = isGatewayOffline
@@ -982,6 +1044,7 @@ export const Globe3DView: React.FC = () => {
         groundRing,
         radialBeam,
         satModel,
+        busMesh: (satModel.userData as any).bus,
         arcMesh,
         trackerDot,
         label,
@@ -1024,7 +1087,7 @@ export const Globe3DView: React.FC = () => {
       pMesh.visible = false
       packetMeshGroup.add(pMesh)
     }
-  }, [activeScenario, activeRoutePath, selectedClientId, selectedSatelliteId, selectedTarget, currentTime_s])
+  }, [activeScenario, selectedClientId, selectedSatelliteId, selectedTarget])
 
   // Continuous real-time position update function
   const updateRealtimePositions = useCallback(
@@ -1099,12 +1162,63 @@ export const Globe3DView: React.FC = () => {
             node.outerRingMesh.position.copy(pos)
             node.outerRingMesh.lookAt(pos.clone().multiplyScalar(2))
           }
+
+          // Dynamically update satellite bus and tracker colors without rebuilding scene
+          const isFailed = !sat.active
+          const isInRoute = activeRoutePath.includes(sat.id)
+          const isSelected =
+            selectedTargetRef.current?.type === 'sat' && selectedTargetRef.current.id === sat.id
+          if (node.busMesh) {
+            const busCol = isFailed ? 0xc86f78 : isSelected ? 0xffffff : isInRoute ? 0xf1f5f9 : 0xa1a1aa
+            ;(node.busMesh.material as THREE.MeshPhongMaterial).color.setHex(busCol)
+          }
+          if (node.trackerDot) {
+            const dotCol = isFailed ? 0xef4444 : isSelected ? 0xffffff : isInRoute ? 0xffffff : 0xd4d4d8
+            ;(node.trackerDot.material as THREE.MeshBasicMaterial).color.setHex(dotCol)
+          }
         }
       }
 
       satPosMapRef.current = satPosMap
 
-      // Update ISL links
+      // Dynamically update ground sites status and colors without scene rebuild
+      for (const g of activeScenario.ground_sites) {
+        const gNode = groundNodesMapRef.current.get(g.id)
+        if (!gNode) continue
+        const isOffline =
+          g.role === 'gateway' &&
+          (activeScenario.gateway_outages || []).some(
+            (f) => f.gateway_id === g.id && f.start_s <= t && t < f.end_s
+          )
+        const isReceiving =
+          activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+        const isClient = g.role === 'client'
+        const isSelected =
+          selectedTargetRef.current?.type === 'ground'
+            ? selectedTargetRef.current.id === g.id
+            : isClient && g.id === selectedClientId
+
+        const statusColorHex = isOffline
+          ? 0xef4444
+          : isClient
+          ? isSelected
+            ? activeRoutePath.length >= 2
+              ? 0x10b981
+              : 0xf59e0b
+            : 0xa1a1aa
+          : isReceiving
+          ? 0x10b981
+          : 0x60a5fa
+
+        ;(gNode.pinMesh.material as THREE.MeshBasicMaterial).color.setHex(statusColorHex)
+        ;(gNode.dotMesh.material as THREE.MeshBasicMaterial).color.setHex(statusColorHex)
+        if (gNode.ringMesh) {
+          gNode.ringMesh.visible = isOffline || isSelected || isReceiving
+          ;(gNode.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(statusColorHex)
+        }
+      }
+
+      // Update ISL links with buffer reuse
       if (islLineRef.current && currentSnap) {
         const linkPositions: number[] = []
         for (const [u, v] of currentSnap.edges) {
@@ -1114,10 +1228,17 @@ export const Globe3DView: React.FC = () => {
             linkPositions.push(posU.x, posU.y, posU.z, posV.x, posV.y, posV.z)
           }
         }
-        islLineRef.current.geometry.setAttribute(
-          'position',
-          new THREE.Float32BufferAttribute(linkPositions, 3)
-        )
+        const existingAttr = islLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
+        if (!existingAttr || existingAttr.count !== linkPositions.length / 3) {
+          if (existingAttr) islLineRef.current.geometry.deleteAttribute('position')
+          islLineRef.current.geometry.setAttribute(
+            'position',
+            new THREE.Float32BufferAttribute(linkPositions, 3)
+          )
+        } else {
+          existingAttr.copyArray(linkPositions)
+          existingAttr.needsUpdate = true
+        }
       }
 
       // Update active route

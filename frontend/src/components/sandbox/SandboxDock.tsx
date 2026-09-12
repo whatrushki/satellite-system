@@ -44,10 +44,10 @@ export const SandboxDock: React.FC = () => {
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.55)',
         backdropFilter: 'blur(16px)',
       }}
-      className="select-none font-sans p-3 shadow-2xl flex flex-col gap-2 text-zinc-200 shrink-0"
+      className="select-none font-sans p-2.5 shadow-2xl flex flex-col gap-1.5 text-zinc-200 shrink-0"
     >
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+      <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
         <div className="flex items-center gap-1.5">
           <Sliders className="w-3.5 h-3.5 text-zinc-300" />
           <span className="text-[10px] uppercase font-black text-white tracking-wider">

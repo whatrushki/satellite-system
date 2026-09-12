@@ -70,24 +70,47 @@ export const AvailabilityGantt: React.FC = () => {
                 onClick={handleTrackClick}
                 className="relative flex-1 h-5 bg-zinc-950 rounded overflow-hidden cursor-pointer border border-white/10"
               >
-                <div className="absolute inset-0 flex">
-                  {client.timeline.map((item, i) => {
-                    let bg = '#10b981' // connected
-                    if (item.status === 'visible_no_route') bg = '#f59e0b'
-                    else if (item.status === 'no_satellite' || item.status === 'gateway_outage')
-                      bg = '#ef4444'
+                <div className="absolute inset-0 flex w-full h-full">
+                  {(() => {
+                    const segs: { status: string; count: number }[] = []
+                    if (client.timeline && client.timeline.length > 0) {
+                      let curStatus = client.timeline[0].status
+                      let curCount = 0
+                      for (let i = 0; i < client.timeline.length; i++) {
+                        const s = client.timeline[i].status
+                        if (s === curStatus) {
+                          curCount++
+                        } else {
+                          segs.push({ status: curStatus, count: curCount })
+                          curStatus = s
+                          curCount = 1
+                        }
+                      }
+                      if (curCount > 0) {
+                        segs.push({ status: curStatus, count: curCount })
+                      }
+                    }
 
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          width: `${100 / totalSteps}%`,
-                          backgroundColor: bg,
-                        }}
-                        className="h-full"
-                      />
-                    )
-                  })}
+                    return segs.map((seg, sIdx) => {
+                      let bg = '#10b981' // connected
+                      if (seg.status === 'visible_no_route') bg = '#f59e0b'
+                      else if (seg.status === 'no_satellite' || seg.status === 'gateway_outage')
+                        bg = '#ef4444'
+
+                      const isLast = sIdx === segs.length - 1
+                      return (
+                        <div
+                          key={sIdx}
+                          style={{
+                            width: isLast ? undefined : `${(seg.count / totalSteps) * 100}%`,
+                            flex: isLast ? '1 1 0%' : undefined,
+                            backgroundColor: bg,
+                          }}
+                          className="h-full"
+                        />
+                      )
+                    })
+                  })()}
                 </div>
 
                 {/* Current Time Cursor */}
@@ -98,11 +121,11 @@ export const AvailabilityGantt: React.FC = () => {
               </div>
 
               {/* Stats badges */}
-              <div className="w-56 flex items-center justify-end gap-2 text-right">
+              <div className="w-44 shrink-0 flex items-center justify-end gap-2 text-right">
                 <span className="text-[11px] text-zinc-400">
                   Макс: <b className="text-zinc-200">{client.max_gap_minutes}м</b>
                 </span>
-                <Badge variant={client.target_met ? 'success' : 'destructive'} className="h-5 px-1.5">
+                <Badge variant={client.target_met ? 'success' : 'destructive'} className="h-5 px-1.5 shrink-0">
                   {client.path_availability_pct.toFixed(1)}%
                   {client.target_met ? (
                     <CheckCircle2 className="w-3 h-3 ml-1" />

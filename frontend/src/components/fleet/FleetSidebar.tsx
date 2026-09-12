@@ -171,7 +171,7 @@ export const FleetSidebar: React.FC = () => {
       </div>
 
       {/* Body Area */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 no-scrollbar">
         {activeTab === 'orbits' && <OrbitConfigurator />}
         {activeTab === 'outages' && <OutageManager />}
         {activeTab === 'stations' && (
