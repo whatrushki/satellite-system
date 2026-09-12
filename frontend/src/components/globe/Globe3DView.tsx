@@ -306,15 +306,15 @@ export const Globe3DView: React.FC = () => {
     const stars = createStarfield(2200, 130, 360)
     scene.add(stars)
 
-    // Lighting (Sunlight + subtle deep space ambient)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.25)
+    // Lighting (Sunlight + balanced space ambient)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.70)
     scene.add(ambientLight)
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.4)
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.2)
     sunLight.position.set(26, 16, 22)
     scene.add(sunLight)
 
-    const spaceFill = new THREE.DirectionalLight(0x71717a, 0.20)
+    const spaceFill = new THREE.DirectionalLight(0x93c5fd, 0.35)
     spaceFill.position.set(-20, -10, -20)
     scene.add(spaceFill)
 
@@ -325,34 +325,16 @@ export const Globe3DView: React.FC = () => {
     const normalMap = textureLoader.load(earthNormalUrl)
     const cloudsMap = textureLoader.load(earthCloudsUrl)
 
-    // 1. Photorealistic Earth Globe with High-Contrast B&W Monochrome Filter
+    // 1. Photorealistic Earth Globe in full natural colors
     const earthGeo = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64)
     const earthMat = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(0x1a2333), // Deep oceanic slate base color
       map: earthMap,
       specularMap: specularMap,
-      specular: new THREE.Color(0x3f3f46),
+      specular: new THREE.Color(0x334455),
       shininess: 25,
       normalMap: normalMap,
       normalScale: new THREE.Vector2(0.85, 0.85),
     })
-
-    // Custom Shader Hook: Balanced Muted Color Filter for Earth ("что то между цветным и ч/б")
-    earthMat.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <map_fragment>',
-        `
-        #include <map_fragment>
-        #ifdef USE_MAP
-          // Grayscale luminosity conversion (ITU-R BT.709)
-          float earthLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-          vec3 monoTone = vec3(pow(earthLum, 1.10) * 1.05);
-          // Blended aerospace palette: 35% subtle natural color + 65% monochrome
-          diffuseColor.rgb = mix(monoTone, diffuseColor.rgb * 0.90, 0.35);
-        #endif
-        `
-      )
-    }
 
     const earthMesh = new THREE.Mesh(earthGeo, earthMat)
     earthMesh.rotation.y = -Math.PI / 2
@@ -363,7 +345,7 @@ export const Globe3DView: React.FC = () => {
     const cloudsMat = new THREE.MeshPhongMaterial({
       map: cloudsMap,
       transparent: true,
-      opacity: 0.80,
+      opacity: 0.85,
       blending: THREE.NormalBlending,
       depthWrite: false,
     })
@@ -372,13 +354,13 @@ export const Globe3DView: React.FC = () => {
     scene.add(cloudsMesh)
     cloudsMeshRef.current = cloudsMesh
 
-    // 3. Atmospheric Rim Glow (Monochrome cool white / silver)
+    // 3. Atmospheric Rim Glow (Rayleigh scattering sky blue)
     const atmoGeo = new THREE.SphereGeometry(EARTH_RADIUS * 1.025, 64, 64)
     const atmoMat = new THREE.ShaderMaterial({
       vertexShader: AtmosphereGlowShader.vertexShader,
       fragmentShader: AtmosphereGlowShader.fragmentShader,
       uniforms: {
-        color: { value: new THREE.Color(0xdde5ed) },
+        color: { value: new THREE.Color(0x38bdf8) },
         coefficient: { value: 0.52 },
         power: { value: 3.2 },
       },

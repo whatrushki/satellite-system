@@ -136,7 +136,7 @@ export const TimelineDock: React.FC = () => {
         {/* Speed Selector + Gantt Toggle */}
         <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10 shrink-0">
           <FastForward className="w-3 h-3 text-zinc-400 ml-1" />
-          {[1, 2, 5, 10, 60].map((s) => (
+          {[1, 5, 30, 120, 600].map((s) => (
             <button
               key={s}
               onClick={() => setPlaybackSpeed(s)}
