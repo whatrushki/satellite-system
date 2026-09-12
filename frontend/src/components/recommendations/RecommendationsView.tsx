@@ -255,75 +255,169 @@ export const RecommendationsView: React.FC = () => {
 
   return (
     <div className="w-full h-full overflow-y-auto p-4 space-y-5 font-mono text-zinc-200 select-none">
-      {/* Dynamic Header Card */}
-      <div className="bg-[#10131a]/90 backdrop-blur-xl p-5 rounded-2xl border border-white/12 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
-            <Lightbulb className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-black uppercase text-white font-sans tracking-wide">
-                Динамические инженерные рекомендации
-              </h2>
-              <span className="text-[10px] font-mono font-bold bg-white/10 px-2 py-0.5 rounded text-zinc-300 border border-white/15">
-                {activeScenario.meta.title}
-              </span>
-              <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                  clientsOverview.allMet
-                    ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
-                    : 'bg-rose-950/50 text-rose-300 border-rose-500/40'
-                }`}
-              >
-                {clientsOverview.allMet
-                  ? `Цель ТЗ выполнена (≥ ${clientsOverview.targetAvail}%)`
-                  : `Дефицит доступности (< ${clientsOverview.targetAvail}%)`}
-              </span>
-            </div>
-            <p className="text-xs text-zinc-400 font-sans mt-1.5 max-w-3xl leading-relaxed">
-              Автоматический расчет баллистической геометрии, топологической связности и отказоустойчивости для текущей конфигурации: {geometryMetrics.totalSats} КА на высоте {geometryMetrics.altitudeKm} км, {geometryMetrics.numPlanes} плоскостей, предел МИС {geometryMetrics.islLimitKm} км.
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setActiveTab('compare')}
-          className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-bold text-white rounded-xl border border-white/20 cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
-        >
-          <span>В модуль сравнения</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Dynamic Auto-Optimizer Section */}
-      <div className="p-5 rounded-2xl bg-gradient-to-r from-[#141b2b]/95 via-[#101726]/90 to-[#0e1422]/95 border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl space-y-4">
+      {/* 1. Expert Verdict & Key KPI Dashboard */}
+      <div className="bg-[#10131a]/90 backdrop-blur-xl p-5 rounded-2xl border border-white/12 shadow-[0_8px_32px_rgba(0,0,0,0.6)] space-y-4">
+        {/* Header line: Title, Status Verdict, Compare Button */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white/10 border border-white/20 text-white shadow-xs">
-              <Sparkles className="w-5 h-5 text-amber-300" />
+            <div className={`p-2.5 rounded-xl border ${
+              clientsOverview.allMet
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+            }`}>
+              {clientsOverview.allMet ? <CheckCircle2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-black uppercase text-white font-sans tracking-wide">
-                  Автоматический синтез оптимальной конфигурации (Auto-Optimizer)
-                </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-black uppercase text-white font-sans tracking-wide">
+                  Экспертная оценка сценария и результаты моделирования
+                </h2>
                 <span className="text-[10px] font-mono font-bold bg-white/10 px-2 py-0.5 rounded text-zinc-300 border border-white/15">
-                  AI Анализ узких мест
+                  {activeScenario.meta.title}
+                </span>
+                <span
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase ${
+                    clientsOverview.allMet
+                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                      : 'bg-rose-950/60 text-rose-300 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
+                  }`}
+                >
+                  {clientsOverview.allMet ? '✓ ТЗ ВЫПОЛНЕНО (≥ ' + clientsOverview.targetAvail + '%)' : '✕ ДЕФИЦИТ СВЯЗИ (< ' + clientsOverview.targetAvail + '%)'}
                 </span>
               </div>
               <p className="text-xs text-zinc-400 font-sans mt-0.5">
-                Алгоритм анализирует сценарий, выявляет лимитирующие факторы и рассчитывает корректировку для достижения проектного максимума (~98.5%).
+                {clientsOverview.allMet
+                  ? 'Конфигурация удовлетворяет нормативам непрерывности связи. Маршрутизация трафика в приполярных широтах стабильна.'
+                  : `Обнаружены разрывы сквозного радиоканала. Лимитирующий терминал: ${clientsOverview.worstClient.client_id} (${clientsOverview.worstClient.path_availability_pct.toFixed(1)}% при норме ≥ ${clientsOverview.targetAvail}%).`}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveTab('compare')}
+            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-bold text-white rounded-xl border border-white/20 cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <span>В модуль сравнения</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* 4 Key Expert KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+          {/* KPI 1: Availability */}
+          <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-1">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">
+              1. Доступность (P_avail)
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl font-black ${clientsOverview.allMet ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {clientsOverview.avgAvail.toFixed(1)}%
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                норма ≥ {clientsOverview.targetAvail}%
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-400 truncate">
+              Худший: <b className="text-zinc-200">{clientsOverview.worstClient.client_id}</b> ({clientsOverview.worstClient.path_availability_pct.toFixed(1)}%)
+            </div>
+          </div>
+
+          {/* KPI 2: Max Gap */}
+          <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-1">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">
+              2. Макс. перерыв связи
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl font-black ${
+                Math.max(...clientsOverview.clients.map((c) => c.max_gap_minutes)) === 0
+                  ? 'text-emerald-400'
+                  : Math.max(...clientsOverview.clients.map((c) => c.max_gap_minutes)) <= 15
+                  ? 'text-amber-400'
+                  : 'text-rose-400'
+              }`}>
+                {Math.max(...clientsOverview.clients.map((c) => c.max_gap_minutes))} мин
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                непрерывность
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-400">
+              {Math.max(...clientsOverview.clients.map((c) => c.max_gap_minutes)) === 0
+                ? 'Сквозной поток без перерывов'
+                : 'Периодический уход КА за горизонт'}
+            </div>
+          </div>
+
+          {/* KPI 3: ISL Geometry */}
+          <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-1">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">
+              3. Топология МИС (Хорда)
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-xl font-black ${geometryMetrics.isChordBroken ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {Math.round(geometryMetrics.chordKm)} км
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                / {geometryMetrics.islLimitKm} км
+              </span>
+            </div>
+            <div className="text-[10px] truncate">
+              {geometryMetrics.isChordBroken ? (
+                <span className="text-rose-400">🔴 Дефицит: -{geometryMetrics.deficitKm.toFixed(0)} км</span>
+              ) : (
+                <span className="text-emerald-400">🟢 Запас: +{geometryMetrics.marginKm.toFixed(0)} км</span>
+              )}
+            </div>
+          </div>
+
+          {/* KPI 4: Reliability & Constellation State */}
+          <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-1">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">
+              4. Состояние группировки
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-white">
+                {geometryMetrics.totalSats - (activeScenario.failures || []).length}/{geometryMetrics.totalSats}
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                КА в строю
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-400">
+              {activeScenario.ground_sites.filter((g) => g.role === 'gateway').length - (activeScenario.gateway_outages || []).length} шлюза активны • {(activeScenario.failures || []).length + (activeScenario.gateway_outages || []).length} аварий
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Compact Auto-Optimizer Section (same obsidian palette, ultra-compact) */}
+      <div className="p-3.5 rounded-2xl bg-[#10131a]/90 border border-white/12 shadow-xl backdrop-blur-xl space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-white/10 border border-white/20 text-white shadow-xs">
+              <Sparkles className="w-4 h-4 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-black uppercase text-white font-sans tracking-wide">
+                  Автоматический синтез параметров (Auto-Optimizer)
+                </h3>
+                <span className="text-[9px] font-mono font-bold bg-white/10 px-1.5 py-0.2 rounded text-zinc-300 border border-white/15">
+                  AI Анализ узких мест
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 font-sans mt-0.5">
+                Алгоритм устраняет выявленные лимиты и доводит сценарий до проектного максимума (~98.5%).
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right font-mono">
-              <div className="text-[10px] text-zinc-400">Прогноз готовности:</div>
-              <div className="text-sm font-black text-emerald-400 flex items-center gap-1 justify-end">
+              <div className="text-[9px] text-zinc-400">Прогноз доступности:</div>
+              <div className="text-xs font-black text-emerald-400 flex items-center gap-1 justify-end">
                 <span>{clientsOverview.avgAvail.toFixed(1)}%</span>
-                <ArrowRight className="w-3.5 h-3.5 text-zinc-500" />
+                <ArrowRight className="w-3 h-3 text-zinc-500" />
                 <span className="text-white bg-emerald-500/20 px-1.5 py-0.2 rounded border border-emerald-500/40">
                   {autoOptimizationPlan?.predictedAvailability.toFixed(1)}%
                 </span>
@@ -333,75 +427,56 @@ export const RecommendationsView: React.FC = () => {
             <button
               onClick={handleApplyOptimization}
               disabled={autoOptimizationPlan?.isAlreadyOptimal}
-              className={`px-4 py-2 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all border flex items-center gap-2 shadow-lg ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all border flex items-center gap-1.5 shadow-sm ${
                 autoOptimizationPlan?.isAlreadyOptimal
                   ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed'
-                  : 'bg-white text-zinc-950 hover:bg-zinc-200 border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                  : 'bg-white text-zinc-950 hover:bg-zinc-200 border-white shadow-[0_0_16px_rgba(255,255,255,0.2)]'
               }`}
             >
-              <Wand2 className="w-4 h-4" />
+              <Wand2 className="w-3.5 h-3.5" />
               <span>
                 {autoOptimizationPlan?.isAlreadyOptimal
-                  ? 'Группировка уже оптимальна'
-                  : '⚡ Применить оптимизацию и создать вариант'}
+                  ? 'Группировка оптимальна'
+                  : '⚡ Применить оптимизацию'}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Action Items Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {autoOptimizationPlan?.fixes && autoOptimizationPlan.fixes.length > 0 ? (
-            autoOptimizationPlan.fixes.map((fix) => (
+        {/* Compact Horizontal Chips for Limiting Factors */}
+        {autoOptimizationPlan?.fixes && autoOptimizationPlan.fixes.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
+            <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">Лимитирующие факторы:</span>
+            {autoOptimizationPlan.fixes.map((fix) => (
               <div
                 key={fix.id}
-                className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-2 flex flex-col justify-between"
+                className="bg-black/50 border border-white/10 px-2.5 py-1 rounded-lg text-xs font-mono flex items-center gap-1.5"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-white font-sans">{fix.title}</span>
-                    <span className="text-[9px] font-mono text-amber-300 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20 uppercase">
-                      Лимит
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 font-sans leading-relaxed">
-                    {fix.description}
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-white/5 space-y-1 text-[10px] font-mono">
-                  <div className="flex justify-between text-zinc-400">
-                    <span>Текущее значение:</span>
-                    <b className="text-rose-400">{fix.currentValue}</b>
-                  </div>
-                  <div className="flex justify-between text-zinc-300">
-                    <span>Корректировка алгоритма:</span>
-                    <b className="text-emerald-300">{fix.targetValue}</b>
-                  </div>
-                  <div className="text-[9px] text-zinc-500 font-sans pt-1">
-                    🎯 {fix.impact}
-                  </div>
-                </div>
+                <span className="text-zinc-300 font-sans font-bold text-[11px]">{fix.title}:</span>
+                <span className="text-rose-400 line-through text-[10px]">{fix.currentValue}</span>
+                <ArrowRight className="w-3 h-3 text-zinc-500" />
+                <span className="text-emerald-300 font-bold text-[11px]">{fix.targetValue}</span>
               </div>
-            ))
-          ) : (
-            <div className="col-span-3 py-3 text-center bg-emerald-950/20 border border-emerald-500/30 rounded-xl text-emerald-200 text-xs font-sans">
-              ✨ Все параметры сценария находятся в оптимальном оптимуме: дефицит хорды отсутствует, отказов КА нет, радиопокрытие непрерывно.
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="pt-2 border-t border-white/5 text-[11px] text-emerald-400 font-mono flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Параметры сценария находятся в проектном оптимуме (~98.5% доступности, дефицита МИС нет).</span>
+          </div>
+        )}
 
         {isOptimizedApplied && (
-          <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-200 font-sans">
-            <div className="flex items-center gap-2 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Оптимизированный сценарий сформирован и загружен в движок! Доступность достигла 100%.</span>
+          <div className="p-2 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-200 font-sans">
+            <div className="flex items-center gap-2 font-bold text-[11px]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Оптимизированный сценарий сформирован и загружен! Достигнут проектный максимум (~98.5%).</span>
             </div>
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="px-3 py-1 bg-emerald-500 text-zinc-950 font-bold rounded-lg hover:bg-emerald-400 cursor-pointer transition-colors"
+              className="px-2.5 py-0.5 bg-emerald-500 text-zinc-950 font-bold rounded-lg hover:bg-emerald-400 cursor-pointer transition-colors text-[11px]"
             >
-              Перейти к 3D мониторингу
+              К 3D мониторингу
             </button>
           </div>
         )}
@@ -611,28 +686,6 @@ export const RecommendationsView: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Summary Action Banner */}
-      <div className="p-4 rounded-2xl bg-[#10131a]/90 border border-white/12 shadow-2xl flex flex-wrap items-center justify-between gap-3 backdrop-blur-xl">
-        <div className="space-y-0.5">
-          <div className="text-xs font-bold text-white font-sans flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-300" />
-            <span>Инженерное резюме проектной группы COSMO-NET:</span>
-          </div>
-          <div className="text-[11px] text-zinc-400 font-sans">
-            Средняя расчетная доступность по группировке: <b className="text-white font-mono">{clientsOverview.avgAvail.toFixed(1)}%</b>. Режим симуляции: круговая аналитическая модель ECEF с проверкой горизонта β ≥ {activeScenario.environment.min_elevation_deg}°.
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className="px-3.5 py-1.5 bg-white text-zinc-950 font-bold text-xs rounded-xl hover:bg-zinc-200 cursor-pointer transition-colors shadow-sm font-sans"
-          >
-            К 3D карте созвездия
-          </button>
         </div>
       </div>
     </div>

@@ -341,7 +341,13 @@ export const FleetSidebar: React.FC = () => {
               return (
                 <div
                   key={sat.id}
-                  onClick={() => setSelectedSatellite(sat.id)}
+                  onClick={() => {
+                    if (isSelected) {
+                      clearSelection()
+                    } else {
+                      setSelectedSatellite(sat.id)
+                    }
+                  }}
                   className={`p-2 rounded-xl transition-all cursor-pointer border text-xs ${
                     isSelected
                       ? 'bg-white/15 border-white/40 shadow-sm'

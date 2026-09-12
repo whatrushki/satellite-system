@@ -11,9 +11,6 @@ import {
   ChevronDown,
   Check,
   Trash2,
-  Zap,
-  Sparkles,
-  FileJson,
 } from 'lucide-react'
 
 interface AppHeaderProps {
@@ -30,8 +27,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
     setLaunchStage,
     resetToOriginal,
     removeScenario,
-    clearAllFailures,
-    exportSandboxScenario,
   } = useScenarioStore()
   const { activeTab, setActiveTab, recalculate } = useSimulationStore()
 
@@ -70,15 +65,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
     recalculate()
   }
 
-  const handleClearSandbox = () => {
-    clearAllFailures()
-    recalculate()
-  }
-
   const currentStage = activeScenario?.design.launch_stage || 3
-  const activeFailuresCount = (activeScenario?.failures || []).length
-  const activeGatewayOutagesCount = (activeScenario?.gateway_outages || []).length
-  const totalIncidents = activeFailuresCount + activeGatewayOutagesCount
   const currentScenarioItem = availableScenarios.find((s) => s.id === activeScenarioId)
 
   return (
@@ -169,44 +156,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
         </button>
       </div>
 
-      {/* 3. Global Sandbox Status Pill (Task #2: Sandbox is a global system mode) */}
-      <div className="pointer-events-auto flex items-center gap-1 bg-[#10131a]/85 backdrop-blur-md border border-white/12 rounded-xl px-2.5 py-1 text-[11px] shadow-[0_4px_16px_rgba(0,0,0,0.5)] shrink-0 font-sans">
-        <span className="flex items-center gap-1.5 font-bold">
-          <Zap className={`w-3.5 h-3.5 ${totalIncidents > 0 ? 'text-amber-400' : 'text-emerald-400'}`} />
-          <span className="text-zinc-300">Песочница:</span>
-          <span
-            className={`px-1.5 py-0.2 rounded font-mono font-bold text-[10px] ${
-              totalIncidents > 0
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-            }`}
-          >
-            {totalIncidents > 0 ? `${totalIncidents} инцид.` : 'Штатно'}
-          </span>
-        </span>
-
-        {totalIncidents > 0 && (
-          <>
-            <div className="w-[1px] h-3.5 bg-white/15 mx-1" />
-            <button
-              onClick={handleClearSandbox}
-              className="text-[10px] text-zinc-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
-              title="Сбросить все заданные и смоделированные отказы спутников и шлюзов"
-            >
-              Сброс
-            </button>
-            <button
-              onClick={exportSandboxScenario}
-              className="text-[10px] text-zinc-300 hover:text-white px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 transition-colors cursor-pointer font-mono"
-              title="Скачать сценарий со всеми авариями песочницы (JSON)"
-            >
-              JSON
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* 4. Right Controls: Scenario selector + Import + Export */}
+      {/* 3. Right Controls: Scenario selector + Import + Export */}
       <div className="pointer-events-auto flex items-center gap-1.5 text-xs font-mono shrink-0">
         {/* Custom Scenario Dropdown with Deletion */}
         <div ref={dropdownRef} className="relative">

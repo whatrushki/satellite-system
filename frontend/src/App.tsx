@@ -10,6 +10,7 @@ import { ComparisonView } from '@/components/comparison/ComparisonView'
 import { RecommendationsView } from '@/components/recommendations/RecommendationsView'
 import { ExportDialog } from '@/components/export/ExportDialog'
 import { ImportDialog } from '@/components/export/ImportDialog'
+import { SandboxDock } from '@/components/sandbox/SandboxDock'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 export const App: React.FC = () => {
@@ -50,9 +51,16 @@ export const App: React.FC = () => {
           </ErrorBoundary>
 
           {/* 3. Floating Left Sidebar: Satellite Fleet */}
-          <div className="absolute left-4 top-16 bottom-3 w-[280px] z-20 pointer-events-auto">
+          <div className="absolute left-4 top-16 bottom-[148px] w-[280px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Флот аппаратов">
               <FleetSidebar />
+            </ErrorBoundary>
+          </div>
+
+          {/* 3b. Floating Left Bottom: Sandbox Control Dock */}
+          <div className="absolute left-4 bottom-3 w-[280px] z-20 pointer-events-auto">
+            <ErrorBoundary fallbackTitle="Песочница отказов">
+              <SandboxDock />
             </ErrorBoundary>
           </div>
 

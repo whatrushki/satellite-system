@@ -156,7 +156,15 @@ export const Globe3DView: React.FC = () => {
   } = useSimulationStore()
 
   const selectedTargetRef = useRef(selectedTarget)
+  const prevTargetRef = useRef(selectedTarget)
+  const shouldResetToOverviewRef = useRef(false)
   useEffect(() => {
+    if (prevTargetRef.current && !selectedTarget) {
+      shouldResetToOverviewRef.current = true
+    } else if (selectedTarget) {
+      shouldResetToOverviewRef.current = false
+    }
+    prevTargetRef.current = selectedTarget
     selectedTargetRef.current = selectedTarget
   }, [selectedTarget])
 
@@ -431,6 +439,7 @@ export const Globe3DView: React.FC = () => {
     const onMouseDown = (e: MouseEvent) => {
       isDragging = true
       isDraggingRef.current = true
+      shouldResetToOverviewRef.current = false
       prevMousePos = { x: e.clientX, y: e.clientY }
       downPos = { x: e.clientX, y: e.clientY }
       downTime = performance.now()
@@ -441,6 +450,16 @@ export const Globe3DView: React.FC = () => {
 
     const onMouseMove = (e: MouseEvent) => {
       if (isDragging) {
+        // Rotating map with mouse cancels satellite follow and deselects target
+        const dragDist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y)
+        if (dragDist > 6 && selectedTargetRef.current) {
+          selectedTargetRef.current = null
+          shouldResetToOverviewRef.current = false
+          useSimulationStore.getState().clearSelection()
+          controlsTargetRef.current.set(0, 0, 0)
+          spherical.setFromVector3(camera.position)
+        }
+
         const dx = e.clientX - prevMousePos.x
         const dy = e.clientY - prevMousePos.y
         prevMousePos = { x: e.clientX, y: e.clientY }
@@ -515,6 +534,7 @@ export const Globe3DView: React.FC = () => {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      shouldResetToOverviewRef.current = false
       const minR = selectedTargetRef.current ? 1.5 : 8.0
       spherical.radius = Math.max(minR, Math.min(60, spherical.radius + e.deltaY * 0.015))
       camera.position.setFromSpherical(spherical).add(controlsTargetRef.current)
@@ -563,8 +583,9 @@ export const Globe3DView: React.FC = () => {
         if (satPos) {
           targetLookAt.copy(satPos)
           const radial = satPos.clone().normalize()
-          // Orbit chase view: smoothly place camera slightly outside and above the satellite
-          targetCamPos.copy(satPos).add(radial.clone().multiplyScalar(3.2)).add(new THREE.Vector3(0, 1.1, 0))
+          // Oblique orbit chase view: placed at an angle with distance ~5.6, showing satellite and Earth underneath
+          const obliqueOffset = radial.clone().multiplyScalar(4.0).add(new THREE.Vector3(2.4, 2.8, 2.4))
+          targetCamPos.copy(satPos).add(obliqueOffset)
         }
       } else if (currentTarget?.type === 'ground') {
         const g = activeScenarioRef.current?.ground_sites.find((s) => s.id === currentTarget.id)
@@ -573,21 +594,35 @@ export const Globe3DView: React.FC = () => {
           const pos = ecefToThree(gx, gy, gz)
           targetLookAt.copy(pos)
           const normal = pos.clone().normalize()
-          // Ground station perspective: looking down onto station with passing orbit overhead
-          targetCamPos.copy(pos).add(normal.clone().multiplyScalar(3.8)).add(new THREE.Vector3(0, 0.9, 0))
+          const obliqueOffset = normal.clone().multiplyScalar(4.5).add(new THREE.Vector3(2.0, 2.8, 2.0))
+          targetCamPos.copy(pos).add(obliqueOffset)
         }
-      } else {
-        // Global Arctic overview
-        targetLookAt.set(0, 0, 0)
-        targetCamPos.set(0, 15, 20)
       }
 
-      if (!isDraggingRef.current) {
+      if (currentTarget) {
+        if (!isDraggingRef.current) {
+          controlsTargetRef.current.lerp(targetLookAt, 0.06)
+          camera.position.lerp(targetCamPos, 0.06)
+          camera.lookAt(controlsTargetRef.current)
+          spherical.setFromVector3(camera.position.clone().sub(controlsTargetRef.current))
+        } else {
+          camera.lookAt(controlsTargetRef.current)
+        }
+      } else if (shouldResetToOverviewRef.current) {
+        targetLookAt.set(0, 0, 0)
+        targetCamPos.set(0, 15, 20)
         controlsTargetRef.current.lerp(targetLookAt, 0.06)
         camera.position.lerp(targetCamPos, 0.06)
         camera.lookAt(controlsTargetRef.current)
+        spherical.setFromVector3(camera.position)
+        if (camera.position.distanceTo(targetCamPos) < 0.25) {
+          shouldResetToOverviewRef.current = false
+        }
       } else {
-        camera.lookAt(controlsTargetRef.current)
+        if (controlsTargetRef.current.lengthSq() > 0.0005) {
+          controlsTargetRef.current.lerp(new THREE.Vector3(0, 0, 0), 0.06)
+          camera.lookAt(controlsTargetRef.current)
+        }
       }
 
       // Animate flowing data packets along active route

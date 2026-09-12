@@ -40,7 +40,6 @@ export const SpaceXTelemetryPanel: React.FC = () => {
     clearAllSatelliteFailures,
     killGatewayNow,
     restoreGatewayNow,
-    exportSandboxScenario,
   } = useScenarioStore()
 
   const step = simulationResult?.step_s || 120
@@ -394,18 +393,6 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                 )}
               </div>
             </div>
-
-            {/* Card 3: Global Sandbox Export */}
-            <div className="bg-black/40 border border-white/10 rounded-xl p-2.5 flex items-center justify-between font-sans">
-              <span className="text-xs text-zinc-400">Сценарий песочницы:</span>
-              <button
-                onClick={exportSandboxScenario}
-                className="flex items-center gap-1 text-xs text-zinc-200 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/15 cursor-pointer transition-colors font-mono"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Экспорт JSON</span>
-              </button>
-            </div>
           </div>
         </>
       ) : (
@@ -687,58 +674,25 @@ export const SpaceXTelemetryPanel: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={handleSimulateOutage}
-              disabled={isSatFailed}
-              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold font-sans cursor-pointer transition-all border flex items-center justify-center gap-1 ${
-                isSatFailed
-                  ? 'bg-zinc-900 text-zinc-600 border-zinc-800 cursor-not-allowed'
-                  : 'bg-rose-950/50 hover:bg-rose-900/70 border-rose-500/40 text-rose-200 shadow-sm'
-              }`}
-              title="Вывести аппарат из строя начиная с текущей секунды"
-            >
-              <ZapOff className="w-3 h-3" />
-              <span>Вывести из строя</span>
-            </button>
-
+          {isSatFailed ? (
             <button
               onClick={handleRestoreSatellite}
-              disabled={!isSatFailed && totalSatFailures.length === 0}
-              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold font-sans cursor-pointer transition-all border flex items-center justify-center gap-1 ${
-                !isSatFailed && totalSatFailures.length === 0
-                  ? 'bg-zinc-900 text-zinc-600 border-zinc-800 cursor-not-allowed'
-                  : 'bg-emerald-950/50 hover:bg-emerald-900/70 border-emerald-500/40 text-emerald-200 shadow-sm'
-              }`}
-              title="Ввести аппарат в эксплуатацию в текущую секунду"
+              className="w-full py-2 px-3 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all border flex items-center justify-center gap-1.5 bg-emerald-950/50 hover:bg-emerald-900/70 border-emerald-500/40 text-emerald-200 shadow-md"
+              title="Ввести аппарат в эксплуатацию"
             >
-              <CheckCircle2 className="w-3 h-3" />
-              <span>Ввести в строй</span>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Ввести в эксплуатацию</span>
             </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-zinc-400">
-            {totalSatFailures.length > 0 ? (
-              <button
-                onClick={handleClearAllFailures}
-                className="text-zinc-400 hover:text-white underline cursor-pointer transition-colors"
-                title="Сбросить все регламентные и смоделированные отказы данного спутника"
-              >
-                Снять все аварии ({totalSatFailures.length})
-              </button>
-            ) : (
-              <span className="text-zinc-500">Отказов нет</span>
-            )}
-
+          ) : (
             <button
-              onClick={exportSandboxScenario}
-              className="flex items-center gap-1 text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/10 cursor-pointer transition-colors"
-              title="Скачать сценарий со всеми авариями песочницы в формате cosmo-A-1.0"
+              onClick={handleSimulateOutage}
+              className="w-full py-2 px-3 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all border flex items-center justify-center gap-1.5 bg-rose-950/50 hover:bg-rose-900/70 border-rose-500/40 text-rose-200 shadow-md"
+              title="Вывести аппарат из строя начиная с текущей секунды"
             >
-              <Download className="w-3 h-3" />
-              <span>Экспорт JSON</span>
+              <ZapOff className="w-3.5 h-3.5" />
+              <span>Вывести из строя</span>
             </button>
-          </div>
+          )}
         </div>
       </div>
     </>
