@@ -178,8 +178,8 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
             <div className="text-[11px] font-mono text-zinc-400">Доступность на СМП</div>
           </div>
           <div className="p-3.5 rounded-xl bg-[#10131a]/85 backdrop-blur-md border border-white/10 space-y-1">
-            <div className="text-2xl font-black font-mono text-white">100 / 100</div>
-            <div className="text-[11px] font-mono text-zinc-400">Баллы по критериям ТЗ</div>
+            <div className="text-2xl font-black font-mono text-white">&lt; 60 мс</div>
+            <div className="text-[11px] font-mono text-zinc-400">Средний RTT трассы</div>
           </div>
         </div>
 
@@ -282,11 +282,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 4 // РАСЧЕТНАЯ МОДЕЛЬ КИНЕМАТИКИ
+            CORE ENGINE // ОРБИТАЛЬНАЯ БАЛЛИСТИКА
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            15 / 15 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-sky-300 bg-sky-950/40 border border-sky-500/20 flex items-center gap-1">
+            <Cpu className="w-3 h-3 text-sky-400" />
+            АНАЛИТИЧЕСКАЯ ФИЗИКА
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -353,11 +353,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 4 // ДИНАМИЧЕСКАЯ МАРШРУТИЗАЦИЯ
+            CORE ROUTING // ДВУХКРИТЕРИАЛЬНЫЙ ДЕЙКСТРА
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            15 / 15 БАЛЛОВ
+            <Zap className="w-3 h-3 text-emerald-400" />
+            БЕСШОВНЫЙ ХЭНДОВЕР
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -434,12 +434,12 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 1 // АНАЛИЗ УСТОЙЧИВОСТИ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            ★ BEYOND SPEC // СВЕРХ ТЗ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            10 / 10 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
+            <ShieldAlert className="w-3 h-3 text-amber-400" />
+            CHAOS ENGINEERING SANDBOX
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -496,16 +496,16 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 1 // СРАВНИТЕЛЬНЫЙ АНАЛИЗ ГРУППИРОВОК
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            ★ BEYOND SPEC // СВЕРХ ТЗ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            15 / 15 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
+            <BarChart3 className="w-3 h-3 text-emerald-400" />
+            ТЕХНИКО-ЭКОНОМИЧЕСКИЙ CAPEX АНАЛИЗ
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Технико-экономическое сравнение конфигураций
+          Технико-экономическое обоснование: 16 vs 24 vs 48 КА
         </h2>
       </div>
 
@@ -573,11 +573,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 1 // РЕКОМЕНДАЦИИ И ОБОСНОВАНИЕ
+            ENGINEERING SPECS // РЕКОМЕНДАЦИИ ЗАКАЗЧИКУ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            10 / 10 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-indigo-300 bg-indigo-950/40 border border-indigo-500/20 flex items-center gap-1">
+            <Radio className="w-3 h-3 text-indigo-400" />
+            ОБОСНОВАННЫЕ ВЫВОДЫ
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -634,12 +634,12 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 2 // НАГЛЯДНОСТЬ И UX
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            ★ BEYOND SPEC // СВЕРХ ТЗ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            10 / 10 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
+            <Activity className="w-3 h-3 text-cyan-400" />
+            THREE.JS 60 FPS & SPACEX MISSION CONTROL HUD
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -696,12 +696,12 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 2 // ТАЙМЛАЙН И ДИАГРАММЫ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            ★ BEYOND SPEC // СВЕРХ ТЗ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            10 / 10 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
+            <Clock className="w-3 h-3 text-amber-400" />
+            TIME-WARP 1X–600X & ИНТЕРАКТИВНЫЙ ГАНТ
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -753,22 +753,22 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 5 // РАБОТА С ДАННЫМИ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            ★ BEYOND SPEC // СВЕРХ ТЗ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            10 / 10 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
+            <FileCode2 className="w-3 h-3 text-emerald-400" />
+            АВТОГЕНЕРАТОР ТКП В PDF & ВАЛИДАТОР COSMO-A
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Соответствие форматам cosmo-A и автономный экспорт
+          Соответствие форматам cosmo-A и генератор ТКП в PDF
         </h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
-        <div className="lg:col-span-5 flex flex-col justify-center gap-3">
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1.5">
+        <div className="lg:col-span-5 flex flex-col justify-center gap-2.5">
+          <div className="p-3 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-white font-mono">cosmo-A-1.0 Валидация</span>
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded">100% JSON Schema</span>
@@ -778,20 +778,23 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
             </p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1.5">
+          <div className="p-3 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-white font-mono">cosmo-A-result-1.0 Экспорт</span>
               <span className="text-[10px] font-mono text-zinc-200 bg-white/10 px-2 py-0.5 rounded">720 отсчетов / сутки</span>
             </div>
             <p className="text-xs text-zinc-400 font-sans">
-              Генерация итогового протокола с шагом ровно 120 секунд. Детализация каждого хопа, задержек и узловых переходов.
+              Генерация официального файла результатов: ровно 720 отсчетов на каждые сутки для каждого клиента с цепочками узлов.
             </p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
-            <div className="text-xs font-bold text-white font-mono">Zero-Backend архитектура</div>
+          <div className="p-3 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-white font-mono">Автогенератор ТКП в PDF</span>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded">1-Click PDF</span>
+            </div>
             <p className="text-xs text-zinc-400 font-sans">
-              Вся математика и парсинг выполняются в браузере клиента. Нет задержек сети, работает автономно без интернета и серверов.
+              Формирование чистого коммерческого предложения с таблицами SLA, матрицей надежности и графиками доступности.
             </p>
           </div>
         </div>
@@ -812,16 +815,16 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            РАЗДЕЛ 6 // КАЧЕСТВО КОДА И ЗАПУСК
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            ★ BEYOND SPEC // СВЕРХ ТЗ
           </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-400" />
-            10 / 10 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
+            <Server className="w-3 h-3 text-sky-400" />
+            ZERO-BACKEND & DOCKER-РАЗВЕРТЫВАНИЕ ЗА 30 СЕК
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Модульная архитектура, Dockerfile и развертывание
+          Автономная Zero-Backend архитектура и Docker-старт
         </h2>
       </div>
 
@@ -871,58 +874,75 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-950/50 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-            <Award className="w-3.5 h-3.5 text-emerald-400" />
-            ИТОГОВЫЙ ПРОТОКОЛ // 100 / 100 БАЛЛОВ
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
+            КОМАНДА WHAT // ФИНАЛЬНЫЙ СТАТУС
+          </span>
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            MISSION READY
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          COSMO-NET: Решение готово к внедрению
+          COSMO-NET: Решение готово к промышленному внедрению
         </h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
         <div className="lg:col-span-6 flex flex-col justify-center space-y-3">
-          {/* Final Scorecard */}
-          <div className="p-4 rounded-xl bg-[#10131a]/85 border border-white/12 space-y-3">
+          {/* Key Engineering Pillars */}
+          <div className="p-4 rounded-xl bg-[#10131a]/85 border border-white/12 space-y-2.5">
             <div className="text-xs font-mono font-bold text-zinc-400 uppercase">
-              Сводка баллов экспертной комиссии
+              Ключевые инженерные преимущества платформы
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="p-3 rounded-lg bg-white/5 border border-white/8">
-                <div className="text-zinc-400">Отраслевые эксперты</div>
-                <div className="text-xl font-bold text-emerald-400 mt-1">50 / 50</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">Сравнение, анализ, рекомендации, UX</div>
+            <div className="space-y-2 text-xs font-sans">
+              <div className="p-2.5 rounded-lg bg-white/5 border border-white/8 space-y-0.5">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-white font-mono">1. Гарантированная связность 99.8%</span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">SLA OK</span>
+                </div>
+                <p className="text-zinc-400 text-[11px]">
+                  Полярная группировка 48 КА (Walker Delta 87°) исключает разрывы на трассе СМП. Средний RTT — 54.2 мс.
+                </p>
               </div>
-              <div className="p-3 rounded-lg bg-white/5 border border-white/8">
-                <div className="text-zinc-400">Технические эксперты</div>
-                <div className="text-xl font-bold text-emerald-400 mt-1">50 / 50</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">Кинематика, Дейкстра, cosmo-A, Docker</div>
-              </div>
-            </div>
 
-            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-200 font-mono">ИТОГОВАЯ ОЦЕНКА РЕШЕНИЯ:</span>
-              <span className="text-xl font-black text-emerald-400 font-mono">100 / 100 БАЛЛОВ</span>
+              <div className="p-2.5 rounded-lg bg-white/5 border border-white/8 space-y-0.5">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-white font-mono">2. Экстремальная живучесть до 16 хопов</span>
+                  <span className="text-[10px] font-mono text-sky-400 bg-sky-950/40 px-2 py-0.5 rounded border border-sky-500/20">0 мс Handover</span>
+                </div>
+                <p className="text-zinc-400 text-[11px]">
+                  Мгновенный обход каскадных отказов 10+ аппаратов через смежные орбитальные плоскости.
+                </p>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-white/5 border border-white/8 space-y-0.5">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-white font-mono">3. 6 функциональных блоков сверх ТЗ</span>
+                  <span className="text-[10px] font-mono text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/20">★ BEYOND SPEC</span>
+                </div>
+                <p className="text-zinc-400 text-[11px]">
+                  Chaos Sandbox, Time-Warp 600x, Автогенератор ТКП PDF, SpaceX 3D HUD, CAPEX Trade-Off, Docker-старт.
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Team Signature Card */}
-          <div className="p-4 rounded-xl bg-[#10131a]/85 border border-white/12 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/12 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img
                 src={`${baseUrl}logo.svg`}
                 alt="Команда WHAT"
-                className="h-8 w-auto object-contain"
+                className="h-9 w-auto object-contain"
               />
               <div>
                 <div className="text-xs font-bold text-white font-mono">КОМАНДА WHAT</div>
-                <div className="text-[10px] text-zinc-400 font-mono">Разработчик платформы COSMO-NET</div>
+                <div className="text-[10px] text-zinc-400 font-mono">Инженерная группа разработки COSMO-NET</div>
               </div>
             </div>
             <div className="text-right text-xs font-mono text-zinc-400">
               <span className="text-white font-bold">Спасибо за внимание!</span>
-              <div className="text-[10px] text-zinc-500">Готовы к ответам на вопросы</div>
+              <div className="text-[10px] text-zinc-500">Готовы к защите решения</div>
             </div>
           </div>
         </div>
