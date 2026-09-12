@@ -51,28 +51,28 @@ export const App: React.FC = () => {
           </ErrorBoundary>
 
           {/* 3. Floating Left Sidebar: Satellite Fleet */}
-          <div className="absolute left-4 top-16 bottom-[168px] w-[280px] z-20 pointer-events-auto">
+          <div className="absolute left-4 top-16 bottom-[180px] w-[280px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Флот аппаратов">
               <FleetSidebar />
             </ErrorBoundary>
           </div>
 
           {/* 3b. Floating Left Bottom: Sandbox Control Dock */}
-          <div className="absolute left-4 bottom-3 w-[280px] z-20 pointer-events-auto">
+          <div className="absolute left-4 bottom-4 w-[280px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Песочница отказов">
               <SandboxDock />
             </ErrorBoundary>
           </div>
 
           {/* 4. Floating Right Sidebar: Telemetry */}
-          <div className="absolute right-4 top-16 bottom-3 w-[300px] z-20 pointer-events-auto">
+          <div className="absolute right-4 top-16 bottom-4 w-[300px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Телеметрия">
               <SpaceXTelemetryPanel />
             </ErrorBoundary>
           </div>
 
-          {/* 5. Floating Bottom Center: Timeline Dock (stretches cleanly across available space between sidebars) */}
-          <div className="absolute left-[296px] right-[316px] bottom-3 z-30 pointer-events-auto px-1">
+          {/* 5. Floating Bottom Center: Timeline Dock (with comfortable 20px spacing from sidebars) */}
+          <div className="absolute left-[316px] right-[336px] bottom-4 z-30 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Временная шкала и диаграмма доступности">
               <TimelineDock />
             </ErrorBoundary>

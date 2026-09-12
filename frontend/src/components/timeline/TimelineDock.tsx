@@ -54,94 +54,83 @@ export const TimelineDock: React.FC = () => {
       }}
       className="w-full border border-white/12 p-3 rounded-2xl flex flex-col gap-2.5 select-none font-mono text-zinc-200 pointer-events-auto"
     >
-      {/* Upper bar: Time Scrubber + Controls */}
-      <div className="flex items-center gap-3">
-        {/* 2D / 3D Toggle */}
-        <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-xs font-sans font-bold">
-          <button
-            onClick={() => setViewMode('2d')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
-              viewMode === '2d'
-                ? 'bg-white/20 text-white shadow-xs'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            2D
-          </button>
-          <button
-            onClick={() => setViewMode('3d')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
-              viewMode === '3d'
-                ? 'bg-white/20 text-white shadow-xs'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            3D
-          </button>
-        </div>
+      {/* Upper bar: Controls and Speed settings */}
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* 2D / 3D Toggle */}
+          <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-xs font-sans font-bold">
+            <button
+              onClick={() => setViewMode('2d')}
+              className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+                viewMode === '2d'
+                  ? 'bg-white/20 text-white shadow-xs'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              2D
+            </button>
+            <button
+              onClick={() => setViewMode('3d')}
+              className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+                viewMode === '3d'
+                  ? 'bg-white/20 text-white shadow-xs'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              3D
+            </button>
+          </div>
 
-        <div className="h-4 w-[1px] bg-white/10" />
+          <div className="h-4 w-[1px] bg-white/10" />
 
-        {/* Play / Pause / Step buttons */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setTime(0)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
-            title="Перейти в начало (00:00:00)"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => stepTime(-1)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
-            title="Шаг назад (-120 сек)"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={togglePlay}
-            className={`px-3 py-1 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all flex items-center gap-1.5 border ${
-              isPlaying
-                ? 'bg-rose-950/60 border-rose-500/40 text-rose-200 hover:bg-rose-900/60'
-                : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200 hover:bg-emerald-900/60'
-            }`}
-            title={isPlaying ? 'Пауза' : 'Воспроизведение'}
-          >
-            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-            <span>{isPlaying ? 'ПАУЗА' : 'СТАРТ'}</span>
-          </button>
-          <button
-            onClick={() => stepTime(1)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
-            title="Шаг вперед (+120 сек)"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+          {/* Play / Pause / Step buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTime(0)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
+              title="Перейти в начало (00:00:00)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => stepTime(-1)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
+              title="Шаг назад (-120 сек)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={togglePlay}
+              className={`px-3 py-1 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all flex items-center gap-1.5 border ${
+                isPlaying
+                  ? 'bg-rose-950/60 border-rose-500/40 text-rose-200 hover:bg-rose-900/60'
+                  : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200 hover:bg-emerald-900/60'
+              }`}
+              title={isPlaying ? 'Пауза' : 'Воспроизведение'}
+            >
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+              <span>{isPlaying ? 'ПАУЗА' : 'СТАРТ'}</span>
+            </button>
+            <button
+              onClick={() => stepTime(1)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
+              title="Шаг вперед (+120 сек)"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
 
-        {/* Digital Time Readout */}
-        <div className="bg-black/60 px-3 py-1 rounded-xl border border-white/10 font-mono flex items-center gap-2 shrink-0">
-          <Clock className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="text-xs font-bold text-white tabular-nums">
-            {formatTime(currentTime_s)}
-          </span>
-          <span className="text-zinc-500 text-[10px]">/ {formatTime(horizon)}</span>
-          <span className="text-[10px] text-zinc-400 font-mono">
-            [шаг {Math.floor(currentTime_s / step) + 1}/{Math.floor(horizon / step)}]
-          </span>
-        </div>
-
-        {/* Main Timeline Slider */}
-        <div className="flex-1 flex items-center px-1">
-          <input
-            type="range"
-            min={0}
-            max={maxTime}
-            step={step}
-            value={currentTime_s}
-            onChange={(e) => setTime(parseFloat(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-white transition-all bg-zinc-800 hover:brightness-125"
-          />
+          {/* Digital Time Readout */}
+          <div className="bg-black/60 px-3 py-1 rounded-xl border border-white/10 font-mono flex items-center gap-2 shrink-0">
+            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="text-xs font-bold text-white tabular-nums">
+              {formatTime(currentTime_s)}
+            </span>
+            <span className="text-zinc-500 text-[10px]">/ {formatTime(horizon)}</span>
+            <span className="text-[10px] text-zinc-400 font-mono">
+              [шаг {Math.floor(currentTime_s / step) + 1}/{Math.floor(horizon / step)}]
+            </span>
+          </div>
         </div>
 
         {/* Speed Selector + Gantt Toggle */}
@@ -169,6 +158,34 @@ export const TimelineDock: React.FC = () => {
             {isGanttCollapsed ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             <span>{isGanttCollapsed ? 'Gantt' : 'Скрыть'}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Row 2: Full-width Timeline Scrubber Slider stretching 100% across the dock */}
+      <div className="w-full flex flex-col gap-1 px-1 py-0.5">
+        <div className="relative w-full flex items-center group">
+          <input
+            type="range"
+            min={0}
+            max={maxTime}
+            step={step}
+            value={currentTime_s}
+            onChange={(e) => setTime(parseFloat(e.target.value))}
+            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-emerald-400 bg-zinc-800/90 border border-white/10 hover:border-emerald-500/50 transition-all shadow-inner focus:outline-none"
+            style={{
+              background: `linear-gradient(to right, #10b981 ${(currentTime_s / (maxTime || 1)) * 100}%, #27272a ${(currentTime_s / (maxTime || 1)) * 100}%)`,
+            }}
+          />
+        </div>
+        {/* Time milestone ticks: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00, 24:00 */}
+        <div className="flex justify-between items-center px-0.5 text-[9px] text-zinc-500 font-mono select-none">
+          <span>00:00</span>
+          <span>04:00</span>
+          <span>08:00</span>
+          <span>12:00</span>
+          <span>16:00</span>
+          <span>20:00</span>
+          <span>24:00</span>
         </div>
       </div>
 
