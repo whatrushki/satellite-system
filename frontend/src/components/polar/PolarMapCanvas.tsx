@@ -517,8 +517,8 @@ export const PolarMapCanvas: React.FC = () => {
 
   return (
     <div className="relative w-full h-full select-none overflow-hidden bg-[#060911] flex items-center justify-center">
-      {/* HUD Transmission Status Banner */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex items-center gap-2 bg-[#10131a]/90 backdrop-blur-md border border-white/12 rounded-xl px-4 py-1.5 shadow-xl text-xs font-mono">
+      {/* HUD Transmission Status Banner (positioned at top-16 to avoid AppHeader collision) */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex items-center gap-2 bg-[#10131a]/90 backdrop-blur-md border border-white/12 rounded-xl px-4 py-1.5 shadow-xl text-xs font-mono">
         <div className="flex items-center gap-1.5 font-bold text-white">
           <span
             className={`w-2 h-2 rounded-full ${

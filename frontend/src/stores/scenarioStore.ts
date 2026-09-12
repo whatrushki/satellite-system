@@ -18,8 +18,10 @@ export interface ScenarioRegistryItem {
 const DEFAULT_SCENARIOS: ScenarioRegistryItem[] = [
   { id: '01_full_constellation', label: '01: Полная (48 КА)' },
   { id: '02_first_launch', label: '02: 1-я очер. (16 КА)' },
-  { id: '03_satellite_outages', label: '03: Отказы 4 КА' },
+  { id: '03_satellite_outages', label: '03: Отказы 10 КА' },
   { id: '04_link_range', label: '04: ISL 2000 км' },
+  { id: '05_sparse_planes', label: '05: Разреженная (24 КА)' },
+  { id: '06_dual_gateway_failover', label: '06: Мурманск + Тикси' },
 ]
 
 interface ScenarioState {
@@ -39,6 +41,9 @@ interface ScenarioState {
   addFailure: (f: FailureOutage) => void
   removeFailure: (index: number) => void
   killSatelliteNow: (satId: string, currentTime_s: number) => void
+  restoreSatelliteNow: (satId: string, currentTime_s: number) => void
+  clearAllSatelliteFailures: (satId: string) => void
+  exportSandboxScenario: () => void
   toggleGatewayOutage: (gatewayId: string, start_s: number, end_s: number) => void
   saveCurrentVariant: (customTitle?: string) => void
   deleteVariant: (id: string) => void
@@ -155,14 +160,99 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   killSatelliteNow: (satId: string, currentTime_s: number) => {
     const cur = get().activeScenario
     if (!cur) return
-    // Outage from currentTime_s to horizon
+    const step = cur.environment.step_s
     const horizon = cur.environment.horizon_s
+    const start_s = Math.floor(currentTime_s / step) * step
+
+    // Check if this satellite is already failed at currentTime_s
+    const exists = (cur.failures || []).some(
+      (f) => f.satellite_id === satId && f.start_s <= currentTime_s && currentTime_s < f.end_s
+    )
+    if (exists) return
+
     const f: FailureOutage = {
       satellite_id: satId,
-      start_s: Math.floor(currentTime_s / cur.environment.step_s) * cur.environment.step_s,
+      start_s,
       end_s: horizon,
     }
     get().addFailure(f)
+  },
+
+  restoreSatelliteNow: (satId: string, currentTime_s: number) => {
+    const cur = get().activeScenario
+    if (!cur) return
+    const step = cur.environment.step_s
+    const failures = [...(cur.failures || [])]
+    const curQuantized = Math.floor(currentTime_s / step) * step
+
+    // Find any failure for this satellite active at currentTime_s
+    const activeFailIdx = failures.findIndex(
+      (f) => f.satellite_id === satId && f.start_s <= currentTime_s && currentTime_s < f.end_s
+    )
+
+    if (activeFailIdx !== -1) {
+      const f = failures[activeFailIdx]
+      if (curQuantized > f.start_s) {
+        // Cap the outage to end at currentTime_s (creating the sandbox incident window [start_s, curQuantized])
+        failures[activeFailIdx] = {
+          ...f,
+          end_s: Math.max(f.start_s + step, curQuantized),
+        }
+      } else {
+        // If restoring at or before start time, delete this failure completely
+        failures.splice(activeFailIdx, 1)
+      }
+    } else {
+      // If no failure actively covers currentTime_s, check if there is an outage starting at currentTime_s or in the future
+      const futureFailIdx = failures.findIndex(
+        (f) => f.satellite_id === satId && f.start_s >= curQuantized
+      )
+      if (futureFailIdx !== -1) {
+        failures.splice(futureFailIdx, 1)
+      } else {
+        // Truncate or remove the latest outage for this satellite if any exists
+        const lastIdx = failures
+          .map((f, i) => (f.satellite_id === satId ? i : -1))
+          .filter((i) => i !== -1)
+          .pop()
+        if (lastIdx !== undefined) {
+          failures.splice(lastIdx, 1)
+        }
+      }
+    }
+
+    set({
+      activeScenario: {
+        ...cur,
+        failures,
+      },
+    })
+  },
+
+  clearAllSatelliteFailures: (satId: string) => {
+    const cur = get().activeScenario
+    if (!cur) return
+    set({
+      activeScenario: {
+        ...cur,
+        failures: (cur.failures || []).filter((f) => f.satellite_id !== satId),
+      },
+    })
+  },
+
+  exportSandboxScenario: () => {
+    const cur = get().activeScenario
+    if (!cur) return
+    const jsonString = JSON.stringify(cur, null, 2)
+    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${cur.meta.id}_sandbox.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   },
 
   toggleGatewayOutage: (gatewayId: string, start_s: number, end_s: number) => {

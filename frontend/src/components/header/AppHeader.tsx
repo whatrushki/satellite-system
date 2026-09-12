@@ -39,7 +39,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
   return (
     <header className="absolute top-3 left-4 right-4 z-30 pointer-events-none flex items-center justify-between select-none font-sans gap-3">
       {/* 1. Left branding + Navigation tabs */}
-      <div className="pointer-events-auto flex items-center gap-2">
+      <div className="pointer-events-auto flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-2 bg-[#10131a]/85 backdrop-blur-md border border-white/12 rounded-xl px-3.5 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
           <span className="text-[12px] font-black tracking-[0.2em] text-white uppercase font-sans">
             COSMO-NET
@@ -88,7 +88,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
       </div>
 
       {/* 2. Center: Launch Stage Switcher (Базовый сценарий проверки №2) */}
-      <div className="pointer-events-auto flex items-center gap-2 bg-[#10131a]/85 backdrop-blur-md border border-white/12 rounded-xl px-2 py-1 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+      <div className="pointer-events-auto flex items-center gap-2 bg-[#10131a]/85 backdrop-blur-md border border-white/12 rounded-xl px-2 py-1 shadow-[0_4px_16px_rgba(0,0,0,0.5)] shrink-0">
         <span className="text-[10px] text-zinc-400 font-sans uppercase font-bold tracking-wider px-1">
           Очередь:
         </span>
@@ -125,7 +125,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
       </div>
 
       {/* 3. Right Controls: Scenario selector + Import + Export */}
-      <div className="pointer-events-auto flex items-center gap-1.5 text-xs font-mono">
+      <div className="pointer-events-auto flex items-center gap-1.5 text-xs font-mono shrink-0">
         {/* Scenario selector */}
         <div className="bg-[#10131a]/85 backdrop-blur-md border border-white/12 rounded-xl px-2.5 py-1.5 flex items-center shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
           <select
