@@ -23,6 +23,18 @@ export const PolarMapCanvas: React.FC = () => {
     details: string
   } | null>(null)
 
+  // Animation frame ticker for continuous packet flow
+  const [animTick, setAnimTick] = useState(0)
+  useEffect(() => {
+    let frameId: number
+    const loop = () => {
+      setAnimTick((t) => (t + 1) % 100000)
+      frameId = requestAnimationFrame(loop)
+    }
+    frameId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(frameId)
+  }, [])
+
   // Current snapshot from simulation result
   const step = simulationResult?.step_s || 120
   const idx = Math.floor(currentTime_s / step)
@@ -33,6 +45,13 @@ export const PolarMapCanvas: React.FC = () => {
   const clientData = simulationResult?.clients.find((c) => c.client_id === selectedClientId)
   const currentTimelineItem = clientData?.timeline.find((item) => item.t_s === idx * step)
   const activeRoutePath = currentTimelineItem?.path || []
+
+  // Direct line-of-sight check
+  const clientElev = currentSnap?.elevation_deg[selectedClientId] || {}
+  const hasSatVis = Object.values(clientElev).some(
+    (el) => el >= (activeScenario?.environment.min_elevation_deg || 10)
+  )
+  const isConnected = activeRoutePath.length >= 2
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -60,11 +79,11 @@ export const PolarMapCanvas: React.FC = () => {
       return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)]
     }
 
-    // 1. Clear background (neutral deep dark canvas)
+    // 1. Clear background
     ctx.fillStyle = '#060911'
     ctx.fillRect(0, 0, w, h)
 
-    // 2. Polar coordinate rings (neutral slate)
+    // 2. Polar coordinate rings
     ctx.save()
     const rings = [80, 70, 66.5, 60, 50]
     for (const lat of rings) {
@@ -72,7 +91,6 @@ export const PolarMapCanvas: React.FC = () => {
       ctx.beginPath()
       ctx.arc(cx, cy, r, 0, 2 * Math.PI)
       if (lat === 66.5) {
-        // Arctic Circle highlight (crisp dashed white line)
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
         ctx.setLineDash([4, 4])
         ctx.lineWidth = 1.0
@@ -100,27 +118,41 @@ export const PolarMapCanvas: React.FC = () => {
       ctx.lineTo(cx + maxRadius * Math.cos(angle), cy + maxRadius * Math.sin(angle))
       ctx.stroke()
 
-      // Longitude label
+      // Meridian label
       const lx = cx + (maxRadius + 14) * Math.cos(angle)
       const ly = cy + (maxRadius + 14) * Math.sin(angle)
-      ctx.fillStyle = 'rgba(161, 161, 170, 0.45)'
+      ctx.fillStyle = 'rgba(161, 161, 170, 0.4)'
       ctx.font = '9px monospace'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      const labelLon = lon > 180 ? lon - 360 : lon
-      ctx.fillText(`${labelLon}°`, lx, ly)
+      ctx.fillText(`${lon}°`, lx, ly)
     }
     ctx.restore()
 
-    // 3. Ground Stations & Real 15° Elevation Cones (Clean neutral monochrome outlines)
-    if (activeScenario) {
-      const elevRadiusDeg = 15.0 // Exact central Earth angle for 10° elevation at 550 km
+    // 3. Ground Stations (Terminals & Gateways)
+    const elevRadiusDeg = 15 // Ground station elevation mask cone radius
+    if (activeScenario?.ground_sites) {
       for (const g of activeScenario.ground_sites) {
+        if (g.lat_deg < minLat) continue
         const [gx, gy] = latLonToXY(g.lat_deg, g.lon_deg)
         const isClient = g.role === 'client'
         const isSelected = g.id === selectedClientId
+        const isReceiving = activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
 
-        // Compute pixel radius of the 15° visibility cone
+        // Status-driven Color
+        const statusColor = isClient
+          ? isSelected
+            ? isConnected
+              ? '#10b981' // Emerald
+              : hasSatVis
+              ? '#f59e0b' // Amber
+              : '#ef4444' // Red
+            : '#a1a1aa'
+          : isReceiving
+          ? '#10b981'
+          : '#93c5fd'
+
+        // Compute pixel radius of the visibility cone
         const [edgeX] = latLonToXY(Math.max(minLat, g.lat_deg - elevRadiusDeg), g.lon_deg)
         const coneRadius = Math.abs(edgeX - gx)
 
@@ -128,26 +160,21 @@ export const PolarMapCanvas: React.FC = () => {
         ctx.save()
         ctx.beginPath()
         ctx.arc(gx, gy, coneRadius, 0, 2 * Math.PI)
-        if (isClient) {
-          ctx.fillStyle = isSelected ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)'
-          ctx.strokeStyle = isSelected ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.15)'
-        } else {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
-        }
-        ctx.lineWidth = isSelected ? 1.5 : 0.8
+        ctx.fillStyle = isSelected || isReceiving ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'
+        ctx.strokeStyle = statusColor
+        ctx.lineWidth = isSelected || isReceiving ? 1.5 : 0.75
         ctx.fill()
         ctx.stroke()
         ctx.restore()
 
-        // Draw station icon (Crisp geometric shape, no shadow blur)
+        // Draw station icon
         ctx.save()
         if (isClient) {
           ctx.beginPath()
-          ctx.arc(gx, gy, isSelected ? 5.5 : 4, 0, 2 * Math.PI)
-          ctx.fillStyle = isSelected ? '#ffffff' : '#d4d4d8'
+          ctx.arc(gx, gy, isSelected ? 6 : 4.5, 0, 2 * Math.PI)
+          ctx.fillStyle = statusColor
           ctx.fill()
-          ctx.strokeStyle = '#090d16'
+          ctx.strokeStyle = '#060911'
           ctx.lineWidth = 1.5
           ctx.stroke()
         } else {
@@ -155,18 +182,60 @@ export const PolarMapCanvas: React.FC = () => {
           ctx.save()
           ctx.translate(gx, gy)
           ctx.rotate(Math.PI / 4)
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(-5, -5, 10, 10)
-          ctx.strokeStyle = '#090d16'
+          ctx.fillStyle = statusColor
+          ctx.fillRect(-5.5, -5.5, 11, 11)
+          ctx.strokeStyle = '#060911'
           ctx.lineWidth = 1.5
-          ctx.strokeRect(-5, -5, 10, 10)
+          ctx.strokeRect(-5.5, -5.5, 11, 11)
           ctx.restore()
         }
 
-        // Label
+        // Station ID Label
         ctx.font = isSelected ? 'bold 11px monospace' : '10px monospace'
         ctx.fillStyle = isSelected ? '#ffffff' : '#a1a1aa'
-        ctx.fillText(`${g.id} (${g.role === 'gateway' ? 'Шлюз' : 'Клиент'})`, gx + 9, gy - 5)
+        ctx.fillText(`${g.id} (${g.role === 'gateway' ? 'Шлюз' : 'Клиент'})`, gx + 9, gy - 4)
+
+        // Connection Status Badge Pill above node
+        if (isClient && isSelected) {
+          const badgeText = isConnected ? '● СВЯЗЬ: OK' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ'
+          const badgeBg = isConnected
+            ? 'rgba(16, 185, 129, 0.25)'
+            : hasSatVis
+            ? 'rgba(245, 158, 11, 0.25)'
+            : 'rgba(239, 68, 68, 0.25)'
+          const badgeBorder = isConnected ? '#10b981' : hasSatVis ? '#f59e0b' : '#ef4444'
+
+          ctx.font = 'bold 9px monospace'
+          const tw = ctx.measureText(badgeText).width
+          ctx.fillStyle = badgeBg
+          ctx.strokeStyle = badgeBorder
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.roundRect(gx - tw / 2 - 5, gy - 23, tw + 10, 14, 4)
+          ctx.fill()
+          ctx.stroke()
+
+          ctx.fillStyle = badgeBorder
+          ctx.fillText(badgeText, gx - tw / 2, gy - 12)
+        } else if (!isClient) {
+          const badgeText = isReceiving ? '● ПРИЕМ' : '● ШЛЮЗ'
+          const badgeBg = isReceiving ? 'rgba(16, 185, 129, 0.25)' : 'rgba(96, 165, 250, 0.15)'
+          const badgeBorder = isReceiving ? '#10b981' : '#60a5fa'
+
+          ctx.font = 'bold 9px monospace'
+          const tw = ctx.measureText(badgeText).width
+          ctx.fillStyle = badgeBg
+          ctx.strokeStyle = badgeBorder
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.roundRect(gx - tw / 2 - 5, gy - 23, tw + 10, 14, 4)
+          ctx.fill()
+          ctx.stroke()
+
+          ctx.fillStyle = badgeBorder
+          ctx.fillText(badgeText, gx - tw / 2, gy - 12)
+        }
+
         ctx.restore()
       }
     }
@@ -209,13 +278,10 @@ export const PolarMapCanvas: React.FC = () => {
       }
       ctx.restore()
 
-      // 5. Active Route Highlight (Crisp Solid White Vector)
+      // 5. Active Route Highlight & Animated Data Packets
       if (activeRoutePath.length >= 2) {
-        ctx.save()
-        ctx.strokeStyle = '#ffffff'
-        ctx.lineWidth = 2.0
+        const routeCoords: [number, number][] = []
 
-        ctx.beginPath()
         for (let i = 0; i < activeRoutePath.length; i++) {
           const nodeId = activeRoutePath[i]
           let px = 0,
@@ -233,12 +299,68 @@ export const PolarMapCanvas: React.FC = () => {
               ;[px, py] = latLonToXY(lat, lon)
             }
           }
+          routeCoords.push([px, py])
+        }
 
-          if (i === 0) ctx.moveTo(px, py)
-          else ctx.lineTo(px, py)
+        // Draw glowing Cyan Route vector line
+        ctx.save()
+        ctx.strokeStyle = '#00f0ff'
+        ctx.lineWidth = 3.0
+        ctx.shadowColor = '#00f0ff'
+        ctx.shadowBlur = 8
+
+        ctx.beginPath()
+        for (let i = 0; i < routeCoords.length; i++) {
+          if (i === 0) ctx.moveTo(routeCoords[i][0], routeCoords[i][1])
+          else ctx.lineTo(routeCoords[i][0], routeCoords[i][1])
         }
         ctx.stroke()
         ctx.restore()
+
+        // Draw animated data packets flowing along the route ("бегущие квадратики")
+        if (routeCoords.length >= 2) {
+          ctx.save()
+          const segLens: number[] = []
+          let totalLen = 0
+          for (let i = 0; i < routeCoords.length - 1; i++) {
+            const dx = routeCoords[i + 1][0] - routeCoords[i][0]
+            const dy = routeCoords[i + 1][1] - routeCoords[i][1]
+            const d = Math.hypot(dx, dy)
+            segLens.push(d)
+            totalLen += d
+          }
+
+          if (totalLen > 0) {
+            const now = performance.now() * 0.00065
+            const packetCount = 8
+            ctx.fillStyle = '#ffffff'
+            ctx.shadowColor = '#00f0ff'
+            ctx.shadowBlur = 8
+
+            for (let k = 0; k < packetCount; k++) {
+              const phase = (now + k / packetCount) % 1.0
+              const targetDist = phase * totalLen
+
+              let acc = 0
+              let px = routeCoords[routeCoords.length - 1][0]
+              let py = routeCoords[routeCoords.length - 1][1]
+
+              for (let i = 0; i < segLens.length; i++) {
+                if (acc + segLens[i] >= targetDist) {
+                  const segT = (targetDist - acc) / segLens[i]
+                  px = routeCoords[i][0] + (routeCoords[i + 1][0] - routeCoords[i][0]) * segT
+                  py = routeCoords[i][1] + (routeCoords[i + 1][1] - routeCoords[i][1]) * segT
+                  break
+                }
+                acc += segLens[i]
+              }
+
+              // Glowing packet square
+              ctx.fillRect(px - 3.5, py - 3.5, 7, 7)
+            }
+          }
+          ctx.restore()
+        }
       }
 
       // 6. Draw Satellites (Clean matte circles)
@@ -257,59 +379,72 @@ export const PolarMapCanvas: React.FC = () => {
         ctx.save()
         if (sat.active) {
           let color = '#e4e4e7' // P1 (white-silver)
-          if (sat.plane_id === 'P2') color = '#a1a1aa' // P2 (silver-zinc)
-          else if (sat.plane_id === 'P3') color = '#71717a' // P3 (zinc)
+          if (sat.plane_id === 'P2') color = '#a1a1aa'
+          if (sat.plane_id === 'P3') color = '#71717a'
+          if (isInRoute) color = '#00f0ff' // In-route satellite highlighted in cyan
+          if (isSelected) color = '#ffffff'
 
-          if (isInRoute) color = '#ffffff'
-
-          ctx.beginPath()
-          ctx.arc(sx, sy, isSelected || isHovered ? 5.0 : isInRoute ? 4.2 : 3.0, 0, 2 * Math.PI)
           ctx.fillStyle = color
+          ctx.beginPath()
+          ctx.arc(sx, sy, isSelected ? 4.5 : isInRoute ? 4 : 3, 0, 2 * Math.PI)
           ctx.fill()
-          ctx.strokeStyle = '#060911'
-          ctx.lineWidth = 1.2
-          ctx.stroke()
 
-          if (isSelected || isHovered || isInRoute) {
-            ctx.font = 'bold 9px monospace'
-            ctx.fillStyle = '#ffffff'
-            ctx.fillText(sat.id, sx + 6, sy - 4)
+          if (isInRoute) {
+            ctx.strokeStyle = '#00f0ff'
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.arc(sx, sy, 6, 0, 2 * Math.PI)
+            ctx.stroke()
+          }
+
+          if (isSelected) {
+            ctx.strokeStyle = '#ffffff'
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.arc(sx, sy, 8, 0, 2 * Math.PI)
+            ctx.stroke()
           }
         } else {
-          // Outage / Offline (Clean Soft Red Cross)
-          ctx.strokeStyle = '#f87171'
-          ctx.lineWidth = 1.4
-          const sz = 3.5
+          // Outage satellite (Pale Red)
+          ctx.fillStyle = '#f87171'
           ctx.beginPath()
-          ctx.moveTo(sx - sz, sy - sz)
-          ctx.lineTo(sx + sz, sy + sz)
-          ctx.moveTo(sx + sz, sy - sz)
-          ctx.lineTo(sx - sz, sy + sz)
-          ctx.stroke()
+          ctx.arc(sx, sy, 3, 0, 2 * Math.PI)
+          ctx.fill()
 
-          if (isSelected || isHovered) {
-            ctx.font = '9px monospace'
-            ctx.fillStyle = '#f87171'
-            ctx.fillText(`${sat.id} [ОТКАЗ]`, sx + 6, sy - 4)
-          }
+          ctx.strokeStyle = '#fca5a5'
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(sx - 3, sy - 3)
+          ctx.lineTo(sx + 3, sy + 3)
+          ctx.moveTo(sx + 3, sy - 3)
+          ctx.lineTo(sx - 3, sy + 3)
+          ctx.stroke()
+        }
+
+        // Hover or selected label
+        if (isHovered || isSelected || isInRoute) {
+          ctx.font = 'bold 9px monospace'
+          ctx.fillStyle = isInRoute ? '#00f0ff' : isSelected ? '#ffffff' : '#a1a1aa'
+          ctx.fillText(`КА ${sat.id}`, sx + 6, sy - 4)
         }
         ctx.restore()
       }
     }
   }, [
-    currentSnap,
     activeScenario,
     currentTime_s,
     selectedClientId,
     selectedSatelliteId,
     hoveredNode,
+    currentSnap,
     activeRoutePath,
+    animTick,
   ])
 
-  // Mouse interaction handler (Hover and Click selection)
+  // Mouse interaction: Hover & Click
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
-    if (!canvas || !currentSnap || !activeScenario) return
+    if (!canvas || !activeScenario) return
     const rect = canvas.getBoundingClientRect()
     const mx = e.clientX - rect.left
     const my = e.clientY - rect.top
@@ -330,6 +465,7 @@ export const PolarMapCanvas: React.FC = () => {
 
     // Check ground sites
     for (const g of activeScenario.ground_sites) {
+      if (g.lat_deg < minLat) continue
       const [gx, gy] = latLonToXY(g.lat_deg, g.lon_deg)
       if (Math.hypot(mx - gx, my - gy) < 12) {
         setHoveredNode({
@@ -337,14 +473,15 @@ export const PolarMapCanvas: React.FC = () => {
           type: 'ground',
           x: mx,
           y: my,
-          details: `${g.name || g.id} (${g.role === 'gateway' ? 'Шлюз' : 'Терминал'}) [${g.lat_deg}°N, ${g.lon_deg}°E]`,
+          details: `${g.name || g.id} [${g.role === 'gateway' ? 'ШЛЮЗ' : 'АБОНЕНТ'}] (${g.lat_deg}°N, ${g.lon_deg}°E)`,
         })
         return
       }
     }
 
     // Check satellites
-    for (const sat of currentSnap.satellites) {
+    const liveSats = computePositions(activeScenario, currentTime_s)
+    for (const sat of liveSats) {
       const rSat = Math.hypot(sat.x_km, sat.y_km, sat.z_km)
       const lat = Math.asin(sat.z_km / rSat) * (180 / Math.PI)
       const lon = Math.atan2(sat.y_km, sat.x_km) * (180 / Math.PI)
@@ -380,6 +517,48 @@ export const PolarMapCanvas: React.FC = () => {
 
   return (
     <div className="relative w-full h-full select-none overflow-hidden bg-[#060911] flex items-center justify-center">
+      {/* HUD Transmission Status Banner */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex items-center gap-2 bg-[#10131a]/90 backdrop-blur-md border border-white/12 rounded-xl px-4 py-1.5 shadow-xl text-xs font-mono">
+        <div className="flex items-center gap-1.5 font-bold text-white">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isConnected
+                ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]'
+                : hasSatVis
+                ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]'
+                : 'bg-rose-500 shadow-[0_0_8px_#ef4444]'
+            }`}
+          />
+          <span>{selectedClientId} ({clientData?.name || 'Абонент'})</span>
+        </div>
+        <span className="text-zinc-500">──</span>
+        <div className="flex items-center gap-1 text-[11px]">
+          <span className={hasSatVis ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}>
+            {hasSatVis ? '● Радио OK' : '✕ Нет КА (β < 10°)'}
+          </span>
+        </div>
+        <span className="text-zinc-500">──</span>
+        <div className="flex items-center gap-1 text-[11px]">
+          <span
+            className={
+              isConnected
+                ? 'text-emerald-300 font-bold'
+                : hasSatVis
+                ? 'text-amber-400 font-bold'
+                : 'text-zinc-500'
+            }
+          >
+            {isConnected ? `● МИС (${activeRoutePath.length - 2} хопа)` : hasSatVis ? '✕ Разрыв МИС' : '— МИС'}
+          </span>
+        </div>
+        <span className="text-zinc-500">──</span>
+        <div className="flex items-center gap-1 text-[11px]">
+          <span className={isConnected ? 'text-emerald-300 font-bold' : 'text-zinc-500'}>
+            {isConnected ? `● Шлюз (${activeRoutePath[activeRoutePath.length - 1]})` : '— Шлюз'}
+          </span>
+        </div>
+      </div>
+
       <canvas
         ref={canvasRef}
         onMouseMove={handleMouseMove}
@@ -388,7 +567,7 @@ export const PolarMapCanvas: React.FC = () => {
         className="w-full h-full cursor-crosshair"
       />
 
-      {/* Interactive Tooltip (Clean neutral card, no neon) */}
+      {/* Interactive Tooltip */}
       {hoveredNode && (
         <div
           style={{ left: hoveredNode.x + 12, top: hoveredNode.y - 28 }}

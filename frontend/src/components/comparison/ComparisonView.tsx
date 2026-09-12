@@ -508,10 +508,14 @@ const HourlyContinuousLineChart: React.FC<{
 }
 
 export const ComparisonView: React.FC = () => {
-  const { activeScenario, savedVariants } = useScenarioStore()
+  const { activeScenario, activeScenarioId, availableScenarios, savedVariants } = useScenarioStore()
   const { simulationResult } = useSimulationStore()
 
-  const [selectedBId, setSelectedBId] = useState<string>('02_first_launch')
+  const [selectedAId, setSelectedAId] = useState<string>(activeScenarioId || '01_full_constellation')
+  const [selectedBId, setSelectedBId] = useState<string>(
+    activeScenarioId === '02_first_launch' ? '01_full_constellation' : '02_first_launch'
+  )
+  const [scenarioA, setScenarioA] = useState<Scenario | null>(activeScenario)
   const [scenarioB, setScenarioB] = useState<Scenario | null>(null)
   const [hoveredTooltip, setHoveredTooltip] = useState<{
     x: number
@@ -520,8 +524,40 @@ export const ComparisonView: React.FC = () => {
     projectName: string
   } | null>(null)
 
+  // Load Scenario A
+  React.useEffect(() => {
+    if (selectedAId === activeScenarioId && activeScenario) {
+      setScenarioA(activeScenario)
+      return
+    }
+    const found = availableScenarios.find((v) => v.id === selectedAId)
+    if (found?.scenario) {
+      setScenarioA(found.scenario)
+      return
+    }
+    const saved = savedVariants.find((v) => v.id === selectedAId)
+    if (saved) {
+      setScenarioA(saved.scenario)
+      return
+    }
+
+    fetch(`/data/${selectedAId}.json`)
+      .then((res) => res.json())
+      .then((data) => setScenarioA(data))
+      .catch((err) => console.error('Failed to load scenario A:', err))
+  }, [selectedAId, activeScenarioId, activeScenario, availableScenarios, savedVariants])
+
   // Load Scenario B
   React.useEffect(() => {
+    if (selectedBId === activeScenarioId && activeScenario) {
+      setScenarioB(activeScenario)
+      return
+    }
+    const found = availableScenarios.find((v) => v.id === selectedBId)
+    if (found?.scenario) {
+      setScenarioB(found.scenario)
+      return
+    }
     const saved = savedVariants.find((v) => v.id === selectedBId)
     if (saved) {
       setScenarioB(saved.scenario)
@@ -530,16 +566,25 @@ export const ComparisonView: React.FC = () => {
 
     fetch(`/data/${selectedBId}.json`)
       .then((res) => res.json())
-      .then((data) => {
-        setScenarioB(data)
-      })
-      .catch((err) => {
-        console.error('Failed to load scenario B:', err)
-      })
-  }, [selectedBId, savedVariants])
+      .then((data) => setScenarioB(data))
+      .catch((err) => console.error('Failed to load scenario B:', err))
+  }, [selectedBId, activeScenarioId, activeScenario, availableScenarios, savedVariants])
+
+  // Compute simulation for Scenario A
+  const simResultA: SimulationResult | null = useMemo(() => {
+    if (selectedAId === activeScenarioId && simulationResult) return simulationResult
+    if (!scenarioA) return null
+    try {
+      return runClientSimulation(scenarioA)
+    } catch (e) {
+      console.error('Simulation A run error:', e)
+      return null
+    }
+  }, [selectedAId, activeScenarioId, simulationResult, scenarioA])
 
   // Compute simulation for Scenario B
   const simResultB: SimulationResult | null = useMemo(() => {
+    if (selectedBId === activeScenarioId && simulationResult) return simulationResult
     if (!scenarioB) return null
     try {
       return runClientSimulation(scenarioB)
@@ -547,40 +592,38 @@ export const ComparisonView: React.FC = () => {
       console.error('Simulation B run error:', e)
       return null
     }
-  }, [scenarioB])
-
-  const simResultA = simulationResult
+  }, [selectedBId, activeScenarioId, simulationResult, scenarioB])
 
   // Detect differences in parameters
   const paramDiffs = useMemo(() => {
-    if (!activeScenario || !scenarioB) return []
+    if (!scenarioA || !scenarioB) return []
     const diffs: Array<{ param: string; valA: string; valB: string }> = []
 
-    if (activeScenario.design.launch_stage !== scenarioB.design.launch_stage) {
+    if (scenarioA.design.launch_stage !== scenarioB.design.launch_stage) {
       diffs.push({
         param: 'Очередь запуска (launch_stage)',
-        valA: `Этап ${activeScenario.design.launch_stage} (${activeScenario.design.launch_stage * 16} КА)`,
+        valA: `Этап ${scenarioA.design.launch_stage} (${scenarioA.design.launch_stage * 16} КА)`,
         valB: `Этап ${scenarioB.design.launch_stage} (${scenarioB.design.launch_stage * 16} КА)`,
       })
     }
 
-    if (activeScenario.environment.isl_range_km !== scenarioB.environment.isl_range_km) {
+    if (scenarioA.environment.isl_range_km !== scenarioB.environment.isl_range_km) {
       diffs.push({
         param: 'Дальность ISL (isl_range_km)',
-        valA: `${activeScenario.environment.isl_range_km} км`,
+        valA: `${scenarioA.environment.isl_range_km} км`,
         valB: `${scenarioB.environment.isl_range_km} км`,
       })
     }
 
-    if (activeScenario.environment.min_elevation_deg !== scenarioB.environment.min_elevation_deg) {
+    if (scenarioA.environment.min_elevation_deg !== scenarioB.environment.min_elevation_deg) {
       diffs.push({
         param: 'Мин. угол возвышения',
-        valA: `${activeScenario.environment.min_elevation_deg}°`,
+        valA: `${scenarioA.environment.min_elevation_deg}°`,
         valB: `${scenarioB.environment.min_elevation_deg}°`,
       })
     }
 
-    const failCountA = (activeScenario.failures || []).length
+    const failCountA = (scenarioA.failures || []).length
     const failCountB = (scenarioB.failures || []).length
     if (failCountA !== failCountB) {
       diffs.push({
@@ -590,7 +633,7 @@ export const ComparisonView: React.FC = () => {
       })
     }
 
-    for (const pA of activeScenario.design.planes) {
+    for (const pA of scenarioA.design.planes) {
       const pB = scenarioB.design.planes.find((p) => p.id === pA.id)
       if (pB) {
         if (pA.raan_deg !== pB.raan_deg || pA.phase_deg !== pB.phase_deg) {
@@ -604,7 +647,7 @@ export const ComparisonView: React.FC = () => {
     }
 
     return diffs
-  }, [activeScenario, scenarioB])
+  }, [scenarioA, scenarioB])
 
   // Compute dynamic conclusion
   const conclusion = useMemo(() => {
@@ -634,10 +677,10 @@ export const ComparisonView: React.FC = () => {
 
   const horizonSec = simResultA?.horizon_s || 86400
 
-  if (!simResultA || !activeScenario) {
+  if (!simResultA || !scenarioA) {
     return (
       <div className="p-8 text-center text-zinc-400 font-mono">
-        Сначала загрузите базовый сценарий и выполните расчет.
+        Сначала выберите базовый сценарий А и дождитесь завершения расчета.
       </div>
     )
   }
@@ -649,16 +692,35 @@ export const ComparisonView: React.FC = () => {
         <div className="flex items-center gap-2 text-white">
           <GitCompare className="w-5 h-5 text-zinc-300" />
           <h2 className="text-xs font-black uppercase tracking-wider text-white font-sans">
-            Сопоставление вариантов группировки
+            Сопоставление любых двух вариантов группировки
           </h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-zinc-400 font-sans">Проект А:</span>
-            <span className="bg-white/10 border border-white/20 text-white font-bold text-xs px-2.5 py-1 rounded-lg">
-              {activeScenario.meta.title}
-            </span>
+            <select
+              value={selectedAId}
+              onChange={(e) => setSelectedAId(e.target.value)}
+              className="bg-black/60 border border-white/15 text-zinc-200 rounded-lg px-2.5 py-1 text-xs cursor-pointer focus:outline-none hover:border-white/30 max-w-[190px] truncate"
+            >
+              <optgroup label="Доступные сценарии" className="bg-zinc-900 text-zinc-200">
+                {availableScenarios.map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    {sc.label}
+                  </option>
+                ))}
+              </optgroup>
+              {savedVariants.length > 0 && (
+                <optgroup label="Пользовательские варианты" className="bg-zinc-900 text-zinc-200">
+                  {savedVariants.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
           </div>
 
           <ArrowRight className="w-4 h-4 text-zinc-500" />
@@ -668,16 +730,17 @@ export const ComparisonView: React.FC = () => {
             <select
               value={selectedBId}
               onChange={(e) => setSelectedBId(e.target.value)}
-              className="bg-black/60 border border-white/15 text-zinc-200 rounded-lg px-2.5 py-1 text-xs cursor-pointer focus:outline-none hover:border-white/30"
+              className="bg-black/60 border border-white/15 text-zinc-200 rounded-lg px-2.5 py-1 text-xs cursor-pointer focus:outline-none hover:border-white/30 max-w-[190px] truncate"
             >
-              <optgroup label="Предустановленные сценарии" className="bg-zinc-900 text-zinc-200">
-                <option value="01_full_constellation">01: Полная группировка (48 КА)</option>
-                <option value="02_first_launch">02: Первая очередь (16 КА)</option>
-                <option value="03_satellite_outages">03: Отказы 10 аппаратов</option>
-                <option value="04_link_range">04: Дальность ISL 2000 км</option>
+              <optgroup label="Доступные сценарии" className="bg-zinc-900 text-zinc-200">
+                {availableScenarios.map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    {sc.label}
+                  </option>
+                ))}
               </optgroup>
               {savedVariants.length > 0 && (
-                <optgroup label="Сохраненные варианты пользователя" className="bg-zinc-900 text-zinc-200">
+                <optgroup label="Пользовательские варианты" className="bg-zinc-900 text-zinc-200">
                   {savedVariants.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.title}
@@ -712,16 +775,16 @@ export const ComparisonView: React.FC = () => {
             <p className="text-zinc-300">
               {conclusion.isBetter ? (
                 <>
-                  Конфигурация <b className="text-white">Проекта А ({activeScenario.meta.title})</b> обеспечивает
+                  Конфигурация <b className="text-white">Проекта А ({scenarioA?.meta.title || selectedAId})</b> обеспечивает
                   прирост средней доступности связи на{' '}
                   <b className="text-white font-mono">+{conclusion.avgDeltaAvail.toFixed(1)}%</b> и сокращает
                   максимальные перерывы связи в среднем на{' '}
                   <b className="text-white font-mono">{Math.abs(conclusion.avgDeltaGap).toFixed(1)} мин</b> по
-                  сравнению с <b className="text-zinc-400">Проектом Б ({scenarioB?.meta.title})</b>.
+                  сравнению с <b className="text-zinc-400">Проектом Б ({scenarioB?.meta.title || selectedBId})</b>.
                 </>
               ) : (
                 <>
-                  Конфигурация <b className="text-zinc-200">Проекта Б ({scenarioB?.meta.title})</b> превосходит
+                  Конфигурация <b className="text-zinc-200">Проекта Б ({scenarioB?.meta.title || selectedBId})</b> превосходит
                   Проект А по доступности на{' '}
                   <b className="text-amber-300 font-mono">+{Math.abs(conclusion.avgDeltaAvail).toFixed(1)}%</b>.
                 </>
@@ -865,8 +928,8 @@ export const ComparisonView: React.FC = () => {
           clientsA={simResultA.clients}
           clientsB={simResultB?.clients}
           targetThreshold={
-            activeScenario?.environment.target_availability
-              ? Math.round(activeScenario.environment.target_availability * 100)
+            scenarioA?.environment.target_availability
+              ? Math.round(scenarioA.environment.target_availability * 100)
               : 90
           }
         />
@@ -903,8 +966,8 @@ export const ComparisonView: React.FC = () => {
               <thead>
                 <tr className="text-zinc-500 border-b border-white/5 text-[10px] uppercase tracking-wider">
                   <th className="pb-2 font-medium">Параметр проекта</th>
-                  <th className="pb-2 font-medium text-white">Проект А ({activeScenario.meta.title})</th>
-                  <th className="pb-2 font-medium text-zinc-400">Проект Б ({scenarioB?.meta.title})</th>
+                  <th className="pb-2 font-medium text-white">Проект А ({scenarioA?.meta.title || selectedAId})</th>
+                  <th className="pb-2 font-medium text-zinc-400">Проект Б ({scenarioB?.meta.title || selectedBId})</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-[11px]">
@@ -1023,7 +1086,7 @@ export const ComparisonView: React.FC = () => {
                               x: rect.left + rect.width / 2,
                               y: rect.top - 8,
                               block: b,
-                              projectName: `Проект А (${activeScenario.meta.title})`,
+                              projectName: `Проект А (${scenarioA?.meta.title || selectedAId})`,
                             })
                           }}
                           onMouseLeave={() => setHoveredTooltip(null)}
@@ -1070,7 +1133,7 @@ export const ComparisonView: React.FC = () => {
                                 x: rect.left + rect.width / 2,
                                 y: rect.top - 8,
                                 block: b,
-                                projectName: `Проект Б (${scenarioB?.meta.title})`,
+                                projectName: `Проект Б (${scenarioB?.meta.title || selectedBId})`,
                               })
                             }}
                             onMouseLeave={() => setHoveredTooltip(null)}

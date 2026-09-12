@@ -177,6 +177,8 @@ export const Globe3DView: React.FC = () => {
   const updateRealtimePositionsRef = useRef<((t: number) => void) | null>(null)
   const islLineRef = useRef<THREE.LineSegments | null>(null)
   const routeLineRef = useRef<THREE.Line | null>(null)
+  const currentRoutePointsRef = useRef<THREE.Vector3[]>([])
+  const packetMeshGroupRef = useRef<THREE.Group | null>(null)
 
   // Current snapshot
   const step = simulationResult?.step_s || 120
@@ -519,6 +521,43 @@ export const Globe3DView: React.FC = () => {
       const curT = useSimulationStore.getState().currentTime_s
       updateRealtimePositionsRef.current?.(curT)
 
+      // Animate flowing data packets along active route
+      if (packetMeshGroupRef.current && currentRoutePointsRef.current.length >= 2) {
+        const pts = currentRoutePointsRef.current
+        const segLens: number[] = []
+        let totalLen = 0
+        for (let i = 0; i < pts.length - 1; i++) {
+          const d = pts[i].distanceTo(pts[i + 1])
+          segLens.push(d)
+          totalLen += d
+        }
+        if (totalLen > 0.001) {
+          const packets = packetMeshGroupRef.current.children
+          const now = performance.now() * 0.00065
+          for (let k = 0; k < packets.length; k++) {
+            const pMesh = packets[k] as THREE.Mesh
+            pMesh.visible = true
+            const phase = (now + k / packets.length) % 1.0
+            const targetDist = phase * totalLen
+
+            let acc = 0
+            let placed = false
+            for (let i = 0; i < segLens.length; i++) {
+              if (acc + segLens[i] >= targetDist) {
+                const segT = (targetDist - acc) / segLens[i]
+                pMesh.position.lerpVectors(pts[i], pts[i + 1], segT)
+                placed = true
+                break
+              }
+              acc += segLens[i]
+            }
+            if (!placed) pMesh.position.copy(pts[pts.length - 1])
+          }
+        }
+      } else if (packetMeshGroupRef.current) {
+        for (const p of packetMeshGroupRef.current.children) p.visible = false
+      }
+
       renderer.render(scene, camera)
     }
     animate()
@@ -595,17 +634,35 @@ export const Globe3DView: React.FC = () => {
     while (routeGroup.children.length > 0) routeGroup.remove(routeGroup.children[0])
 
     // 1. Ground Stations on Earth Surface (Interactive, Click-to-Select)
+    const clientElev = currentSnap?.elevation_deg[selectedClientId] || {}
+    const hasSatVis = Object.values(clientElev).some(
+      (el) => el >= (activeScenario.environment.min_elevation_deg || 10)
+    )
+    const isConnected = activeRoutePath.length >= 2
+
     for (const g of activeScenario.ground_sites) {
       const [gx, gy, gz] = groundPosition(g.lat_deg, g.lon_deg)
       const pos = ecefToThree(gx, gy, gz)
       const isClient = g.role === 'client'
       const isSelected = g.id === selectedClientId
+      const isReceiving = activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+
+      // Status-driven Color
+      const statusColorHex = isClient
+        ? isSelected
+          ? isConnected
+            ? 0x10b981 // Emerald (Connected)
+            : hasSatVis
+            ? 0xf59e0b // Amber (ISL Broken)
+            : 0xef4444 // Red (No satellite in view)
+          : 0xa1a1aa
+        : isReceiving
+        ? 0x10b981
+        : 0x60a5fa
 
       // Pin pedestal
       const pinGeo = new THREE.CylinderGeometry(0.03, 0.06, 0.16, 8)
-      const pinMat = new THREE.MeshBasicMaterial({
-        color: isClient ? (isSelected ? 0xffffff : 0xa1a1aa) : 0x93c5fd,
-      })
+      const pinMat = new THREE.MeshBasicMaterial({ color: statusColorHex })
       const pinMesh = new THREE.Mesh(pinGeo, pinMat)
       pinMesh.position.copy(pos)
       pinMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pos.clone().normalize())
@@ -615,19 +672,17 @@ export const Globe3DView: React.FC = () => {
       // Interactive Ground Marker Dot (generous hit target)
       const dotRadius = isSelected ? 0.14 : isClient ? 0.11 : 0.13
       const dotGeo = new THREE.SphereGeometry(dotRadius, 12, 12)
-      const dotMat = new THREE.MeshBasicMaterial({
-        color: isSelected ? 0xffffff : isClient ? 0xd4d4d8 : 0x93c5fd,
-      })
+      const dotMat = new THREE.MeshBasicMaterial({ color: statusColorHex })
       const dotMesh = new THREE.Mesh(dotGeo, dotMat)
       dotMesh.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.12)))
       dotMesh.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
       satGroup.add(dotMesh)
 
-      // Ground Target Ring if Selected
-      if (isSelected) {
+      // Ground Target Ring if Selected or Receiving
+      if (isSelected || isReceiving) {
         const ringGeo = new THREE.RingGeometry(0.24, 0.30, 32)
         const ringMat = new THREE.MeshBasicMaterial({
-          color: 0xffffff,
+          color: statusColorHex,
           side: THREE.DoubleSide,
           transparent: true,
           opacity: 0.90,
@@ -648,6 +703,21 @@ export const Globe3DView: React.FC = () => {
       groundLabel.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
       groundLabel.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
       satGroup.add(groundLabel)
+
+      // Connection Status Badge Sprite directly above the node
+      if (isClient && isSelected) {
+        const statusText = isConnected ? '● СВЯЗЬ: АКТИВНА' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ КА'
+        const statusColor = isConnected ? '#10b981' : hasSatVis ? '#f59e0b' : '#ef4444'
+        const statusBadge = createTextSprite(`[${statusText}]`, statusColor, 0.85, 0.19)
+        statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        satGroup.add(statusBadge)
+      } else if (!isClient) {
+        const gwText = isReceiving ? '● ПРИЕМ ТРАФИКА' : '● ШЛЮЗ В СЕТИ'
+        const gwColor = isReceiving ? '#10b981' : '#60a5fa'
+        const statusBadge = createTextSprite(`[${gwText}]`, gwColor, 0.80, 0.18)
+        statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        satGroup.add(statusBadge)
+      }
     }
 
     // 2. Build Satellites (Ground Track Point on the Globe + Perpendicular Radial Beam + 3D Spacecraft Model in Orbit)
@@ -800,12 +870,25 @@ export const Globe3DView: React.FC = () => {
     // 4. Active Route (Ground -> Sat ... -> Gateway)
     const routeGeo = new THREE.BufferGeometry()
     const routeMat = new THREE.LineBasicMaterial({
-      color: 0xffffff,
-      linewidth: 2.0,
+      color: 0x00f0ff,
+      linewidth: 3.0,
     })
     const routeMesh = new THREE.Line(routeGeo, routeMat)
     routeGroup.add(routeMesh)
     routeLineRef.current = routeMesh
+
+    // 5. Animated Data Packets along the active route ("бегущие квадратики")
+    const packetMeshGroup = new THREE.Group()
+    routeGroup.add(packetMeshGroup)
+    packetMeshGroupRef.current = packetMeshGroup
+
+    const packetGeo = new THREE.BoxGeometry(0.10, 0.10, 0.10)
+    const packetMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff })
+    for (let i = 0; i < 18; i++) {
+      const pMesh = new THREE.Mesh(packetGeo, packetMat)
+      pMesh.visible = false
+      packetMeshGroup.add(pMesh)
+    }
   }, [activeScenario, activeRoutePath, selectedClientId, selectedSatelliteId])
 
   // Continuous real-time position update function
@@ -916,8 +999,10 @@ export const Globe3DView: React.FC = () => {
           }
           routeLineRef.current.geometry.setFromPoints(routePoints)
           routeLineRef.current.visible = true
+          currentRoutePointsRef.current = routePoints
         } else {
           routeLineRef.current.visible = false
+          currentRoutePointsRef.current = []
         }
       }
     },

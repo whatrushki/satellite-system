@@ -9,7 +9,14 @@ interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport }) => {
-  const { activeScenario, activeScenarioId, loadDefaultScenario, setLaunchStage, resetToOriginal } = useScenarioStore()
+  const {
+    activeScenario,
+    activeScenarioId,
+    availableScenarios,
+    loadDefaultScenario,
+    setLaunchStage,
+    resetToOriginal,
+  } = useScenarioStore()
   const { activeTab, setActiveTab, recalculate } = useSimulationStore()
 
   const handleScenarioChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -124,25 +131,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
           <select
             value={activeScenarioId}
             onChange={handleScenarioChange}
-            className="bg-transparent text-[11px] text-zinc-200 font-mono focus:outline-none cursor-pointer truncate max-w-[150px]"
+            className="bg-transparent text-[11px] text-zinc-200 font-mono focus:outline-none cursor-pointer truncate max-w-[170px]"
           >
-            <option value="01_full_constellation" className="bg-zinc-900 text-zinc-200">
-              01: Полная (48 КА)
-            </option>
-            <option value="02_first_launch" className="bg-zinc-900 text-zinc-200">
-              02: 1-я очер. (16 КА)
-            </option>
-            <option value="03_satellite_outages" className="bg-zinc-900 text-zinc-200">
-              03: Отказы 10 КА
-            </option>
-            <option value="04_link_range" className="bg-zinc-900 text-zinc-200">
-              04: ISL 2000 км
-            </option>
-            {activeScenarioId === 'custom' && (
-              <option value="custom" className="bg-zinc-900 text-zinc-200">
-                Пользовательский
+            {availableScenarios.map((sc) => (
+              <option key={sc.id} value={sc.id} className="bg-zinc-900 text-zinc-200">
+                {sc.label}
               </option>
-            )}
+            ))}
           </select>
         </div>
 

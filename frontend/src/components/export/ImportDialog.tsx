@@ -13,7 +13,7 @@ interface ImportDialogProps {
 }
 
 export const ImportDialog: React.FC<ImportDialogProps> = ({ open, onOpenChange }) => {
-  const { setScenario } = useScenarioStore()
+  const { registerScenario } = useScenarioStore()
   const { recalculate } = useSimulationStore()
 
   const [parsedData, setParsedData] = useState<Scenario | null>(null)
@@ -49,7 +49,9 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ open, onOpenChange }
 
   const handleApply = () => {
     if (!parsedData) return
-    setScenario(parsedData, 'custom')
+    const id = `imported_${Date.now()}`
+    const label = parsedData.meta?.title || fileName.replace(/\.json$/i, '') || `Импорт (${new Date().toLocaleTimeString()})`
+    registerScenario(id, label, parsedData)
     recalculate()
     onOpenChange(false)
   }

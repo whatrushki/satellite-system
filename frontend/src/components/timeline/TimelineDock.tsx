@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { AvailabilityGantt } from './AvailabilityGantt'
 import {
@@ -7,11 +7,14 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Clock,
   FastForward,
 } from 'lucide-react'
 
 export const TimelineDock: React.FC = () => {
+  const [isGanttCollapsed, setIsGanttCollapsed] = useState(false)
   const {
     currentTime_s,
     setTime,
@@ -141,7 +144,7 @@ export const TimelineDock: React.FC = () => {
           />
         </div>
 
-        {/* Speed Selector */}
+        {/* Speed Selector + Gantt Toggle */}
         <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10 shrink-0">
           <FastForward className="w-3 h-3 text-zinc-400 ml-1" />
           {speeds.map((s) => (
@@ -157,11 +160,20 @@ export const TimelineDock: React.FC = () => {
               {s}x
             </button>
           ))}
+          <div className="w-[1px] h-3.5 bg-white/15 mx-0.5" />
+          <button
+            onClick={() => setIsGanttCollapsed(!isGanttCollapsed)}
+            className="px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-white hover:bg-white/10 rounded-md cursor-pointer flex items-center gap-0.5"
+            title={isGanttCollapsed ? 'Показать диаграмму доступности' : 'Свернуть диаграмму'}
+          >
+            {isGanttCollapsed ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            <span>{isGanttCollapsed ? 'Gantt' : 'Скрыть'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Lower bar: 3-lane Gantt Availability Chart */}
-      <AvailabilityGantt />
+      {/* Lower bar: 3-lane Gantt Availability Chart (Collapsible) */}
+      {!isGanttCollapsed && <AvailabilityGantt />}
     </div>
   )
 }

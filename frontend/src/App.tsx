@@ -50,21 +50,21 @@ export const App: React.FC = () => {
           </ErrorBoundary>
 
           {/* 3. Floating Left Sidebar: Satellite Fleet */}
-          <div className="absolute left-4 top-16 bottom-44 w-[280px] z-20 pointer-events-auto">
+          <div className="absolute left-4 top-16 bottom-3 w-[280px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Флот аппаратов">
               <FleetSidebar />
             </ErrorBoundary>
           </div>
 
           {/* 4. Floating Right Sidebar: Telemetry */}
-          <div className="absolute right-4 top-16 bottom-44 w-[300px] z-20 pointer-events-auto">
+          <div className="absolute right-4 top-16 bottom-3 w-[300px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Телеметрия">
               <SpaceXTelemetryPanel />
             </ErrorBoundary>
           </div>
 
-          {/* 5. Floating Bottom Center: Timeline Dock with 3-Lane Availability Gantt Chart */}
-          <div className="absolute left-4 right-4 bottom-3 z-30 pointer-events-auto max-w-7xl mx-auto">
+          {/* 5. Floating Bottom Center: Timeline Dock (neatly docked between sidebars, zero overlap) */}
+          <div className="absolute left-4 right-4 md:left-[300px] md:right-[320px] bottom-3 z-30 pointer-events-auto max-w-5xl mx-auto">
             <ErrorBoundary fallbackTitle="Временная шкала и диаграмма доступности">
               <TimelineDock />
             </ErrorBoundary>

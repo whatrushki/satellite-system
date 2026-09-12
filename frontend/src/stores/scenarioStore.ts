@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import { Scenario, EnvironmentConfig, FailureOutage } from '../core/types'
 
 export interface SavedVariant {
@@ -8,15 +8,31 @@ export interface SavedVariant {
   scenario: Scenario
 }
 
+export interface ScenarioRegistryItem {
+  id: string
+  label: string
+  scenario?: Scenario
+  isCustom?: boolean
+}
+
+const DEFAULT_SCENARIOS: ScenarioRegistryItem[] = [
+  { id: '01_full_constellation', label: '01: Полная (48 КА)' },
+  { id: '02_first_launch', label: '02: 1-я очер. (16 КА)' },
+  { id: '03_satellite_outages', label: '03: Отказы 4 КА' },
+  { id: '04_link_range', label: '04: ISL 2000 км' },
+]
+
 interface ScenarioState {
   activeScenario: Scenario | null
   activeScenarioId: string
+  availableScenarios: ScenarioRegistryItem[]
   savedVariants: SavedVariant[]
   isLoading: boolean
   error: string | null
 
   loadDefaultScenario: (id: string) => Promise<void>
   setScenario: (s: Scenario, id?: string) => void
+  registerScenario: (id: string, label: string, scenario: Scenario) => void
   updateEnvironment: (partial: Partial<EnvironmentConfig>) => void
   setLaunchStage: (stage: number) => void
   updatePlane: (planeId: string, raan: number, phase: number) => void
@@ -32,17 +48,26 @@ interface ScenarioState {
 export const useScenarioStore = create<ScenarioState>((set, get) => ({
   activeScenario: null,
   activeScenarioId: '01_full_constellation',
+  availableScenarios: DEFAULT_SCENARIOS,
   savedVariants: [],
   isLoading: false,
   error: null,
 
   loadDefaultScenario: async (id: string) => {
+    const existing = get().availableScenarios.find((s) => s.id === id)
+    if (existing?.scenario) {
+      set({ activeScenario: existing.scenario, activeScenarioId: id, isLoading: false, error: null })
+      return
+    }
     set({ isLoading: true, error: null })
     try {
       const res = await fetch(`/data/${id}.json`)
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data: Scenario = await res.json()
-      set({ activeScenario: data, activeScenarioId: id, isLoading: false })
+      const updatedList = get().availableScenarios.map((item) =>
+        item.id === id ? { ...item, scenario: data } : item
+      )
+      set({ activeScenario: data, activeScenarioId: id, availableScenarios: updatedList, isLoading: false })
     } catch (err: any) {
       set({ error: err.message || 'Ошибка загрузки сценария', isLoading: false })
     }
@@ -50,6 +75,17 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
 
   setScenario: (s: Scenario, id = 'custom') => {
     set({ activeScenario: s, activeScenarioId: id, error: null })
+  },
+
+  registerScenario: (id: string, label: string, scenario: Scenario) => {
+    const prev = get().availableScenarios.filter((x) => x.id !== id)
+    const newItem: ScenarioRegistryItem = { id, label, scenario, isCustom: true }
+    set({
+      availableScenarios: [...prev, newItem],
+      activeScenario: scenario,
+      activeScenarioId: id,
+      error: null,
+    })
   },
 
   updateEnvironment: (partial: Partial<EnvironmentConfig>) => {
