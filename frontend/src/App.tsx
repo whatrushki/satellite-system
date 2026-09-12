@@ -10,7 +10,6 @@ import { ComparisonView } from '@/components/comparison/ComparisonView'
 import { RecommendationsView } from '@/components/recommendations/RecommendationsView'
 import { ExportDialog } from '@/components/export/ExportDialog'
 import { ImportDialog } from '@/components/export/ImportDialog'
-import { ReportModal } from '@/components/report/ReportModal'
 import { SandboxDock } from '@/components/sandbox/SandboxDock'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 
@@ -20,7 +19,6 @@ export const App: React.FC = () => {
 
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
-  const [isReportOpen, setIsReportOpen] = useState(false)
 
   // Initial load on mount
   useEffect(() => {
@@ -49,7 +47,6 @@ export const App: React.FC = () => {
             <AppHeader
               onOpenImport={() => setIsImportOpen(true)}
               onOpenExport={() => setIsExportOpen(true)}
-              onOpenReport={() => setIsReportOpen(true)}
             />
           </ErrorBoundary>
 
@@ -128,7 +125,6 @@ export const App: React.FC = () => {
       {/* Modals */}
       <ExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
       <ImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
-      <ReportModal open={isReportOpen} onOpenChange={setIsReportOpen} />
     </div>
   )
 }

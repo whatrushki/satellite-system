@@ -3,6 +3,7 @@ import os, sys, json, math, heapq
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Body
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -274,6 +275,13 @@ def export_results(scenario: dict = Body(...)):
         }
     }
     return result_doc
+
+@app.get('/api/report/pdf')
+def get_pdf_report():
+    pdf_path = Path(__file__).parent.parent / 'report.pdf'
+    if pdf_path.exists():
+        return FileResponse(str(pdf_path), media_type='application/pdf', filename='cosmo_net_detailed_report.pdf')
+    raise HTTPException(status_code=404, detail='Report PDF not found')
 
 if __name__ == '__main__':
     import uvicorn
