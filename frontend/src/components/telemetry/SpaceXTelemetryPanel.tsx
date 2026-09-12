@@ -73,26 +73,33 @@ export const SpaceXTelemetryPanel: React.FC = () => {
     return s
   }, [liveSnap])
 
+  const effectiveClientId = useMemo(() => {
+    if (selectedTarget?.type === 'ground' && selectedTarget.id.startsWith('C')) {
+      return selectedTarget.id
+    }
+    return selectedClientId || 'C65'
+  }, [selectedTarget, selectedClientId])
+
   const liveRoute = useMemo(() => {
-    if (!activeScenario || !liveSnap || !selectedClientId) return null
-    return findRoute(liveSnap, activeScenario, selectedClientId, liveGateways)
-  }, [activeScenario, liveSnap, selectedClientId, liveGateways])
+    if (!activeScenario || !liveSnap || !effectiveClientId) return null
+    return findRoute(liveSnap, activeScenario, effectiveClientId, liveGateways)
+  }, [activeScenario, liveSnap, effectiveClientId, liveGateways])
 
   const isConnected = !!liveRoute && liveRoute.path.length >= 2
 
   const liveFailureReason = useMemo(() => {
-    if (isConnected || !activeScenario || !liveSnap || !selectedClientId) return null
+    if (isConnected || !activeScenario || !liveSnap || !effectiveClientId) return null
     const allGateways = new Set(
       activeScenario.ground_sites.filter((g) => g.role === 'gateway').map((g) => g.id)
     )
     return classifyFailureReason(
       activeScenario,
       liveSnap,
-      selectedClientId,
+      effectiveClientId,
       allGateways,
       liveActiveSatIds
     )
-  }, [isConnected, activeScenario, liveSnap, selectedClientId, liveActiveSatIds])
+  }, [isConnected, activeScenario, liveSnap, effectiveClientId, liveActiveSatIds])
 
   // Selected Satellite
   const satId = selectedSatelliteId || 'S01'
@@ -372,21 +379,92 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2 font-mono text-[11px]">
-                  <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
-                    <span className="text-zinc-400 font-sans">Шлюз назначения:</span>
-                    <b className="text-white font-mono">
-                      {liveRoute?.path ? liveRoute.path[liveRoute.path.length - 1] : '—'}
-                    </b>
+                <div className="space-y-2.5 font-mono text-[11px]">
+                  {/* Route Status Header */}
+                  <div className="flex items-center justify-between text-[11px] font-sans">
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Маршрут: {groundSite.id} → {gatewaySite?.id || 'Шлюз'}</span>
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
+                        isConnected
+                          ? 'bg-emerald-950/60 text-emerald-200 border-emerald-500/40'
+                          : 'bg-rose-950/60 text-rose-200 border-rose-500/40'
+                      }`}
+                    >
+                      {isConnected && liveRoute ? `${liveRoute.hops} ХОПА` : 'НЕТ ПУТИ'}
+                    </span>
                   </div>
-                  <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
-                    <span className="text-zinc-400 font-sans">Длина пути / Задержка:</span>
-                    <b className="text-white font-mono">
-                      {liveRoute
-                        ? `${Math.round(liveRoute.distance_km)} км (${(liveRoute.latency_ms * 2).toFixed(1)} мс RTT)`
-                        : 'Маршрут прерван'}
-                    </b>
-                  </div>
+
+                  {isConnected && liveRoute?.path ? (
+                    <>
+                      {/* Interactive Hop chain */}
+                      <div className="flex items-center flex-wrap gap-1 bg-black/60 p-2 rounded-xl border border-white/5 text-[11px] font-mono">
+                        {liveRoute.path.map((node, i) => (
+                          <React.Fragment key={i}>
+                            <button
+                              onClick={() => {
+                                if (node.startsWith('S')) setSelectedSatellite(node)
+                                else if (node.startsWith('C') || node.startsWith('G')) setSelectedStation(node)
+                              }}
+                              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors border ${
+                                node === groundSite.id
+                                  ? 'text-zinc-950 bg-white border-white shadow-xs'
+                                  : node === gatewaySite?.id
+                                  ? 'text-zinc-200 bg-white/10 border-white/20'
+                                  : 'text-zinc-300 bg-white/5 border-transparent hover:bg-white/10'
+                              }`}
+                              title={node.startsWith('S') ? `Перейти к КА ${node}` : `Перейти к станции ${node}`}
+                            >
+                              {node}
+                            </button>
+                            {i < liveRoute.path.length - 1 && (
+                              <ArrowRight className="w-3 h-3 text-zinc-600 shrink-0" />
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+
+                      {/* Route Details */}
+                      <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
+                        <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                          <span>Длина пути:</span>
+                          <b className="text-white font-mono">{Math.round(liveRoute.distance_km)} км</b>
+                        </div>
+                        <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                          <span>Задержка (RTT):</span>
+                          <b className="text-white font-mono">{(liveRoute.latency_ms * 2).toFixed(1)} мс</b>
+                        </div>
+                      </div>
+
+                      {/* Ascending Satellite */}
+                      <div className="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/5 text-[10px]">
+                        <span className="text-zinc-400">Входной КА (1-й хоп):</span>
+                        <button
+                          onClick={() => setSelectedSatellite(liveRoute.path[1])}
+                          className="font-bold text-emerald-300 hover:text-emerald-200 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>КА {liveRoute.path[1]}</span>
+                          <ArrowRight className="w-3 h-3 text-zinc-500" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-2.5 bg-rose-950/40 border border-rose-500/30 rounded-xl space-y-1">
+                      <div className="text-xs font-bold text-rose-300 font-sans flex items-center gap-1.5">
+                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Сквозной канал прерван</span>
+                      </div>
+                      <p className="text-[10px] text-rose-200/80 font-sans leading-relaxed">
+                        {liveFailureReason === 'GATEWAY_OUTAGE'
+                          ? 'Опорный шлюз Мурманск выведен из строя или обесточен.'
+                          : liveFailureReason === 'ISL_MESH_PARTITION'
+                          ? 'Сегментация лазерной сети МИС. Обходной путь до шлюза отсутствует.'
+                          : 'Терминал находится вне зоны прямой радиовидимости активных космических аппаратов.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -609,7 +687,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           <div className="flex items-center justify-between text-[11px] font-sans">
             <span className="font-bold text-white flex items-center gap-1.5">
               <Radio className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Маршрут: {selectedClientId} → {gatewaySite?.id || 'Шлюз'}</span>
+              <span>Маршрут: {effectiveClientId} → {gatewaySite?.id || 'Шлюз'}</span>
             </span>
             <span
               className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
@@ -631,9 +709,10 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                     <button
                       onClick={() => {
                         if (node.startsWith('S')) setSelectedSatellite(node)
+                        else if (node.startsWith('C') || node.startsWith('G')) setSelectedStation(node)
                       }}
                       className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors border ${
-                        node === selectedClientId
+                        node === effectiveClientId
                           ? 'text-white bg-white/20 border-white/35'
                           : node === satId
                           ? 'text-zinc-950 bg-white border-white shadow-xs'

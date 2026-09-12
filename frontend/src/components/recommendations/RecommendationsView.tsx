@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { Scenario } from '@/core/types'
+import { runClientSimulation } from '@/core/simulator'
 import {
   Lightbulb,
   AlertTriangle,
@@ -199,44 +200,60 @@ export const RecommendationsView: React.FC = () => {
     }
 
     const isAlreadyOptimal = fixes.length === 0 && clientsOverview.allMet
-    const predictedAvailability = isAlreadyOptimal
-      ? clientsOverview.avgAvail
-      : Math.min(98.5, Math.max(98.1, clientsOverview.avgAvail + fixes.length * 15))
+
+    // Build optimized scenario object
+    const optimized: Scenario = JSON.parse(JSON.stringify(activeScenario))
+    if (geometryMetrics.isChordBroken) {
+      optimized.environment.isl_range_km = geometryMetrics.minNeededIslRangeKm
+    }
+    if (optimized.design.launch_stage < 3) {
+      optimized.design.launch_stage = 3
+    }
+    optimized.failures = []
+    optimized.gateway_outages = []
+
+    // RUN REAL SIMULATION on 720 time steps
+    let predictedAvailability = clientsOverview.avgAvail
+    let optClientSummaries: Array<{ id: string; name: string; was: number; becomes: number }> = []
+
+    if (!isAlreadyOptimal) {
+      try {
+        const simRes = runClientSimulation(optimized)
+        if (simRes && simRes.clients.length > 0) {
+          const sumAvail = simRes.clients.reduce((acc, c) => acc + c.path_availability_pct, 0)
+          predictedAvailability = Math.round((sumAvail / simRes.clients.length) * 10) / 10
+          optClientSummaries = simRes.clients.map((c) => {
+            const oldClient = clientsOverview.clients.find((orig) => orig.client_id === c.client_id)
+            return {
+              id: c.client_id,
+              name: c.name,
+              was: oldClient ? Math.round(oldClient.path_availability_pct * 10) / 10 : 0,
+              becomes: Math.round(c.path_availability_pct * 10) / 10,
+            }
+          })
+        }
+      } catch (err) {
+        console.error('Failed to run optimization simulation:', err)
+      }
+    }
 
     return {
       fixes,
       isAlreadyOptimal,
       predictedAvailability,
+      optClientSummaries,
+      optimizedScenario: optimized,
     }
   }, [activeScenario, geometryMetrics, clientsOverview])
 
   const handleApplyOptimization = () => {
     if (!activeScenario || !autoOptimizationPlan) return
 
-    // Deep clone scenario
-    const optimized: Scenario = JSON.parse(JSON.stringify(activeScenario))
-
-    // 1. Fix ISL range if broken
-    if (geometryMetrics && geometryMetrics.isChordBroken) {
-      optimized.environment.isl_range_km = geometryMetrics.minNeededIslRangeKm
-    }
-
-    // 2. Fix launch stage
-    if (optimized.design.launch_stage < 3) {
-      optimized.design.launch_stage = 3
-    }
-
-    // 3. Clear failures
-    optimized.failures = []
-
-    // 4. Clear gateway outages
-    optimized.gateway_outages = []
-
-    // 5. Update metadata
+    const optimized = autoOptimizationPlan.optimizedScenario
     const optId = `opt_${activeScenario.meta.id}`
     optimized.meta = {
       id: optId,
-      title: `${activeScenario.meta.title} (Оптимизировано, проектный оптимум ~98.5%)`,
+      title: `${activeScenario.meta.title} (Оптимизировано, расчетная доступность ${autoOptimizationPlan.predictedAvailability.toFixed(1)}%)`,
     }
 
     // Register into scenario store
@@ -407,14 +424,14 @@ export const RecommendationsView: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 font-sans mt-0.5">
-                Алгоритм устраняет выявленные лимиты и доводит сценарий до проектного максимума (~98.5%).
+                Физико-математический перерасчет на 720 временных шагах: устранение дефицита МИС, снятие аварий и развертывание 48 КА.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right font-mono">
-              <div className="text-[9px] text-zinc-400">Прогноз доступности:</div>
+              <div className="text-[9px] text-zinc-400">Расчет на 720 шагов:</div>
               <div className="text-xs font-black text-emerald-400 flex items-center gap-1 justify-end">
                 <span>{clientsOverview.avgAvail.toFixed(1)}%</span>
                 <ArrowRight className="w-3 h-3 text-zinc-500" />

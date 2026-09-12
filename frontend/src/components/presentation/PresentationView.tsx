@@ -276,13 +276,88 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     </div>
   )
 
-  // Slide 3: Kinematics & Math Core
+  // Slide 3: Constellation Architecture & Geometry
   const renderSlide3 = () => (
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            CORE ENGINE // ОРБИТАЛЬНАЯ БАЛЛИСТИКА
+            ОРБИТАЛЬНОЕ ПОСТРОЕНИЕ // ГЕОМЕТРИЯ СЕТИ
+          </span>
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-sky-300 bg-sky-950/40 border border-sky-500/20 flex items-center gap-1">
+            <Radio className="w-3 h-3 text-sky-400" />
+            ОБОСНОВАНИЕ ДАЛЬНОСТИ МИС
+          </span>
+        </div>
+        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
+          Полярная группировка Walker Delta 87° и топология МИС
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
+        <div className="lg:col-span-5 flex flex-col justify-center gap-2.5">
+          {/* Chord Calc Card */}
+          <div className="p-3 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
+            <div className="text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+              1. Расчет внутриплоскостной хорды
+            </div>
+            <div className="font-mono text-xs text-white bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/8">
+              d_хорда = 2 · (6371 + 550) · sin(π / 16) = 2700.5 км
+            </div>
+            <p className="text-[11px] text-zinc-400 font-sans">
+              Геометрическое расстояние между смежными аппаратами в плоскости при радиусе r = 6921 км.
+            </p>
+          </div>
+
+          {/* ISL Limit Card */}
+          <div className="p-3 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
+            <div className="text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+              2. Порог разрыва и запас надежности
+            </div>
+            <div className="font-mono text-xs text-white bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/8">
+              Лимит ISL = 3000 км (Запас: +299.5 км над хордой)
+            </div>
+            <p className="text-[11px] text-zinc-400 font-sans">
+              При дальности лазера &lt; 2701 км кольцо необратимо рвется! COSMO-NET гарантирует 100% связность кольца.
+            </p>
+          </div>
+
+          {/* Orbit Parameters Card */}
+          <div className="p-3 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
+            <div className="text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+              3. Параметры развертывания созвездия
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-2 rounded bg-black/40 border border-white/5">
+                <div className="text-zinc-500 text-[10px]">Наклонение</div>
+                <div className="text-white font-bold">i = 87° полярное</div>
+              </div>
+              <div className="p-2 rounded bg-black/40 border border-white/5">
+                <div className="text-zinc-500 text-[10px]">Угол места</div>
+                <div className="text-emerald-400 font-bold">β ≥ 10.0°</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-7 h-full flex flex-col min-h-[340px]">
+          <SlideMediaBlock
+            videoSrc={currentSlide.videoSrc}
+            title={currentSlide.title}
+            category={currentSlide.category}
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+  // Slide 4: Kepler Kinematics & Math Core
+  const renderSlide4 = () => (
+    <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
+      <div className="space-y-1 shrink-0 mb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
+            МАТЕМАТИЧЕСКОЕ ЯДРО // ОРБИТАЛЬНАЯ БАЛЛИСТИКА
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-sky-300 bg-sky-950/40 border border-sky-500/20 flex items-center gap-1">
             <Cpu className="w-3 h-3 text-sky-400" />
@@ -290,7 +365,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Математическое ядро и точная геометрия орбит
+          Аналитическая кинематика Кеплера и суточное вращение
         </h2>
       </div>
 
@@ -347,13 +422,13 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     </div>
   )
 
-  // Slide 4: Routing & Dijkstra Handover
-  const renderSlide4 = () => (
+  // Slide 5: Dynamic Dijkstra & Handover
+  const renderSlide5 = () => (
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            CORE ROUTING // ДВУХКРИТЕРИАЛЬНЫЙ ДЕЙКСТРА
+            СЕТЕВОЕ ЯДРО // АДАПТИВНАЯ МАРШРУТИЗАЦИЯ
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
             <Zap className="w-3 h-3 text-emerald-400" />
@@ -361,7 +436,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Адаптивный алгоритм Дейкстры и бесшовный хэндовер
+          Двухкритериальный Дейкстра и предиктивный Handover
         </h2>
       </div>
 
@@ -370,12 +445,12 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
           {/* Top KPI Metric Strip */}
           <div className="grid grid-cols-3 gap-2">
             <div className="p-2.5 rounded-xl bg-[#10131a]/85 border border-white/10 text-center">
-              <div className="text-xl font-black font-mono text-white">16 хопов</div>
-              <div className="text-[10px] font-mono text-zinc-400">Глубокий обход аварий</div>
+              <div className="text-xl font-black font-mono text-white">min Hops</div>
+              <div className="text-[10px] font-mono text-zinc-400">Приоритет 1: хопы</div>
             </div>
             <div className="p-2.5 rounded-xl bg-[#10131a]/85 border border-white/10 text-center">
-              <div className="text-xl font-black font-mono text-white">267.2 мс</div>
-              <div className="text-[10px] font-mono text-zinc-400">RTT обходного пути</div>
+              <div className="text-xl font-black font-mono text-white">min Dist</div>
+              <div className="text-[10px] font-mono text-zinc-400">Приоритет 2: RTT</div>
             </div>
             <div className="p-2.5 rounded-xl bg-[#10131a]/85 border border-white/10 text-center">
               <div className="text-xl font-black font-mono text-emerald-400">0 мс</div>
@@ -383,23 +458,23 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
             </div>
           </div>
 
-          {/* Criteria Card */}
+          {/* Weight Formula Card */}
           <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1.5">
             <div className="text-xs font-bold text-white uppercase font-mono">
-              Двухкритериальная оптимизация графа
+              Двухкритериальная весовая функция
             </div>
             <div className="font-mono text-xs text-white bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/8">
               W(u, v) = Hops · 10⁶ + PhysicalDistance(u, v)
             </div>
             <p className="text-xs text-zinc-300 font-sans leading-relaxed">
-              Абсолютный приоритет минимального числа транзитных хопов (уменьшение джиттера и нагрузки на буферы), а при равенстве — физически кратчайшая дистанция и задержка RTT.
+              Абсолютный приоритет минимального числа транзитных хопов (устранение джиттера и нагрузки на буферы), а при равенстве — физически кратчайшая дистанция и задержка RTT.
             </p>
           </div>
 
           {/* Handover & Failure Detection */}
           <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1.5">
             <div className="text-xs font-bold text-white uppercase font-mono">
-              Мгновенная классификация инцидентов
+              Мгновенная классификация причин инцидентов
             </div>
             <div className="flex flex-wrap gap-1.5">
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-300">
@@ -429,39 +504,55 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     </div>
   )
 
-  // Slide 5: Resilience & Sandbox
-  const renderSlide5 = () => (
+  // Slide 6: Killer Feature 1 - Chaos Engineering Sandbox
+  const renderSlide6 = () => (
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-            ★ BEYOND SPEC // СВЕРХ ТЗ
+            KILLER FEATURE // CHAOS ENGINEERING SANDBOX
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
             <ShieldAlert className="w-3 h-3 text-amber-400" />
-            CHAOS ENGINEERING SANDBOX
+            SELF-HEALING СЕТИ
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Интерактивная песочница отказов и оценка живучести
+          Автономный Self-Healing и глубокий обход до 16 хопов
         </h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
         <div className="lg:col-span-5 flex flex-col justify-center gap-3">
+          {/* Top KPI Metric Strip */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2.5 rounded-xl bg-[#10131a]/85 border border-white/10 text-center">
+              <div className="text-xl font-black font-mono text-rose-400">10 КА</div>
+              <div className="text-[10px] font-mono text-zinc-400">Отказ 20% флота</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-[#10131a]/85 border border-white/10 text-center">
+              <div className="text-xl font-black font-mono text-white">16 хопов</div>
+              <div className="text-[10px] font-mono text-zinc-400">Рекордный обход</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-[#10131a]/85 border border-white/10 text-center">
+              <div className="text-xl font-black font-mono text-emerald-400">100%</div>
+              <div className="text-[10px] font-mono text-zinc-400">Связность СМП</div>
+            </div>
+          </div>
+
           {/* Stress-Test Control Dashboard */}
-          <div className="p-4 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-2">
+          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-2">
             <div className="text-xs font-mono font-bold text-zinc-400 uppercase">
-              Результаты стресс-теста при массовой аварии
+              Результаты стресс-теста при масштабной аварии
             </div>
             <div className="space-y-1.5 font-mono text-xs">
               <div className="flex justify-between p-2 rounded-lg bg-black/40 border border-white/8">
-                <span className="text-zinc-400">Авария орбиты:</span>
-                <span className="text-rose-400 font-bold">10 спутников отключено (20%)</span>
+                <span className="text-zinc-400">Физика отказов:</span>
+                <span className="text-rose-400 font-bold">Радиационные SEU-сбои в каспах</span>
               </div>
               <div className="flex justify-between p-2 rounded-lg bg-black/40 border border-white/8">
-                <span className="text-zinc-400">Связность судов СМП:</span>
-                <span className="text-emerald-400 font-bold">100% (найден обход)</span>
+                <span className="text-zinc-400">Длина обхода:</span>
+                <span className="text-white font-bold">40 054 км (RTT: 267.2 мс)</span>
               </div>
               <div className="flex justify-between p-2 rounded-lg bg-black/40 border border-white/8">
                 <span className="text-zinc-400">Резервирование шлюза:</span>
@@ -470,12 +561,12 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1.5">
+          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
             <div className="text-xs font-bold text-white uppercase font-mono">
-              Песочница управления отказами в UI
+              Интерактивная песочница в 1 клик
             </div>
             <p className="text-xs text-zinc-300 font-sans leading-relaxed">
-              Оператор может в один клик симулировать отказ конкретных аппаратов (S14, S31, S48), обрыв лазерных каналов или отключение станции в Мурманске. Система мгновенно демонстрирует реакцию графа.
+              Оператор может прямо с 3D-глобуса «убить» любой аппарат или станцию Мурманска. Граф мгновенно пересчитывается на клиенте без задержки сети.
             </p>
           </div>
         </div>
@@ -491,21 +582,21 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     </div>
   )
 
-  // Slide 6: Constellation Comparison Matrix
-  const renderSlide6 = () => (
+  // Slide 7: Killer Feature 2 - Constellation Comparison 16 vs 24 vs 48
+  const renderSlide7 = () => (
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-            ★ BEYOND SPEC // СВЕРХ ТЗ
+            KILLER FEATURE // СРАВНИТЕЛЬНЫЙ АНАЛИЗ ОРБИТ
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
             <BarChart3 className="w-3 h-3 text-emerald-400" />
-            ТЕХНИКО-ЭКОНОМИЧЕСКИЙ CAPEX АНАЛИЗ
+            ПАРЕТО-ОПТИМУМ CAPEX
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Технико-экономическое обоснование: 16 vs 24 vs 48 КА
+          Технико-экономическое сравнение: 16 vs 24 vs 48 КА
         </h2>
       </div>
 
@@ -567,79 +658,17 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     </div>
   )
 
-  // Slide 7: Recommendations
-  const renderSlide7 = () => (
-    <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
-      <div className="space-y-1 shrink-0 mb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            ENGINEERING SPECS // РЕКОМЕНДАЦИИ ЗАКАЗЧИКУ
-          </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-indigo-300 bg-indigo-950/40 border border-indigo-500/20 flex items-center gap-1">
-            <Radio className="w-3 h-3 text-indigo-400" />
-            ОБОСНОВАННЫЕ ВЫВОДЫ
-          </span>
-        </div>
-        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
-          Инженерные спецификации и рекомендации заказчику
-        </h2>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
-        <div className="lg:col-span-5 flex flex-col justify-center gap-3">
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-white font-mono">1. Судовой абонентский терминал</span>
-              <span className="text-[10px] font-mono text-zinc-300 bg-white/10 px-2 py-0.5 rounded">G/T ≥ 12 дБ/К</span>
-            </div>
-            <p className="text-xs text-zinc-400 font-sans">
-              Фазированная АР с электронным сканированием луча. Минимальный рабочий угол места α_min = 25° исключает отражения от ледяных торосов и морской воды.
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-white font-mono">2. Бортовая буферизация КА</span>
-              <span className="text-[10px] font-mono text-zinc-300 bg-white/10 px-2 py-0.5 rounded">Буфер ≥ 50 ГБ</span>
-            </div>
-            <p className="text-xs text-zinc-400 font-sans">
-              Store-and-Forward память на борту для гарантированного сохранения телеметрии и SOS-сообщений судов даже в моменты солнечных вспышек.
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/10 space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-white font-mono">3. Резервирование наземного шлюза</span>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded">Dual Gateway</span>
-            </div>
-            <p className="text-xs text-zinc-400 font-sans">
-              Дополнительный резервный оптический терминал в Архангельске поднимает доступность сети до 99.99% при форс-мажорах в Мурманске.
-            </p>
-          </div>
-        </div>
-
-        <div className="lg:col-span-7 h-full flex flex-col min-h-[340px]">
-          <SlideMediaBlock
-            videoSrc={currentSlide.videoSrc}
-            title={currentSlide.title}
-            category={currentSlide.category}
-          />
-        </div>
-      </div>
-    </div>
-  )
-
   // Slide 8: 3D Visualization & Telemetry
   const renderSlide8 = () => (
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-            ★ BEYOND SPEC // СВЕРХ ТЗ
+            KILLER FEATURE // ЦИФРОВОЙ ДВОЙНИК & UX
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
             <Activity className="w-3 h-3 text-cyan-400" />
-            THREE.JS 60 FPS & SPACEX MISSION CONTROL HUD
+            60 FPS WEBGL & SPACEX HUD
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -697,11 +726,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-            ★ BEYOND SPEC // СВЕРХ ТЗ
+            KILLER FEATURE // УПРАВЛЕНИЕ ВРЕМЕНЕМ
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
             <Clock className="w-3 h-3 text-amber-400" />
-            TIME-WARP 1X–600X & ИНТЕРАКТИВНЫЙ ГАНТ
+            TIME-WARP ДО 600X & ГАНТ
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -754,11 +783,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-            ★ BEYOND SPEC // СВЕРХ ТЗ
+            KILLER FEATURE // СТАНДАРТИЗАЦИЯ И ЭКСПОРТ
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
             <FileCode2 className="w-3 h-3 text-emerald-400" />
-            АВТОГЕНЕРАТОР ТКП В PDF & ВАЛИДАТОР COSMO-A
+            АВТОГЕНЕРАТОР ТКП В PDF & COSMO-A
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -816,11 +845,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-            ★ BEYOND SPEC // СВЕРХ ТЗ
+            KILLER FEATURE // АРХИТЕКТУРА И РАЗВЕРТЫВАНИЕ
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-zinc-300 bg-white/5 border border-white/10 flex items-center gap-1">
             <Server className="w-3 h-3 text-sky-400" />
-            ZERO-BACKEND & DOCKER-РАЗВЕРТЫВАНИЕ ЗА 30 СЕК
+            ZERO-BACKEND & DOCKER ЗА 30 СЕК
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -869,17 +898,17 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     </div>
   )
 
-  // Slide 12: Summary & Finale
+  // Slide 12: Expert Recommendations & Summary
   const renderSlide12 = () => (
     <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
       <div className="space-y-1 shrink-0 mb-3">
         <div className="flex items-center gap-2.5">
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
-            КОМАНДА WHAT // ФИНАЛЬНЫЙ СТАТУС
+            КОМАНДА WHAT // МИССИЯ ВЫПОЛНЕНА
           </span>
           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            MISSION READY
+            ГОТОВНОСТЬ К ВНЕДРЕНИЮ
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight font-sans">
@@ -888,40 +917,40 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
-        <div className="lg:col-span-6 flex flex-col justify-center space-y-3">
-          {/* Key Engineering Pillars */}
-          <div className="p-4 rounded-xl bg-[#10131a]/85 border border-white/12 space-y-2.5">
+        <div className="lg:col-span-6 flex flex-col justify-center space-y-2.5">
+          {/* Recommendations Specification Block */}
+          <div className="p-3.5 rounded-xl bg-[#10131a]/85 border border-white/12 space-y-2">
             <div className="text-xs font-mono font-bold text-zinc-400 uppercase">
-              Ключевые инженерные преимущества платформы
+              Инженерные рекомендации заказчику
             </div>
-            <div className="space-y-2 text-xs font-sans">
+            <div className="space-y-1.5 text-xs font-sans">
               <div className="p-2.5 rounded-lg bg-white/5 border border-white/8 space-y-0.5">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-white font-mono">1. Гарантированная связность 99.8%</span>
-                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">SLA OK</span>
+                  <span className="font-bold text-white font-mono">1. Судовой терминал: ФАР (G/T ≥ 12 дБ/К)</span>
+                  <span className="text-[10px] font-mono text-zinc-300 bg-white/10 px-1.5 py-0.2 rounded">α_min = 25°</span>
                 </div>
                 <p className="text-zinc-400 text-[11px]">
-                  Полярная группировка 48 КА (Walker Delta 87°) исключает разрывы на трассе СМП. Средний RTT — 54.2 мс.
+                  Электронное сканирование луча и отсечка отражений от ледяных торосов и морской воды.
                 </p>
               </div>
 
               <div className="p-2.5 rounded-lg bg-white/5 border border-white/8 space-y-0.5">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-white font-mono">2. Экстремальная живучесть до 16 хопов</span>
-                  <span className="text-[10px] font-mono text-sky-400 bg-sky-950/40 px-2 py-0.5 rounded border border-sky-500/20">0 мс Handover</span>
+                  <span className="font-bold text-white font-mono">2. Бортовая память КА (≥ 50 ГБ)</span>
+                  <span className="text-[10px] font-mono text-zinc-300 bg-white/10 px-1.5 py-0.2 rounded">Store & Forward</span>
                 </div>
                 <p className="text-zinc-400 text-[11px]">
-                  Мгновенный обход каскадных отказов 10+ аппаратов через смежные орбитальные плоскости.
+                  Гарантия сохранения телеметрии и SOS-сигналов судов в моменты экстремальных солнечных вспышек.
                 </p>
               </div>
 
               <div className="p-2.5 rounded-lg bg-white/5 border border-white/8 space-y-0.5">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-white font-mono">3. 6 функциональных блоков сверх ТЗ</span>
-                  <span className="text-[10px] font-mono text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/20">★ BEYOND SPEC</span>
+                  <span className="font-bold text-white font-mono">3. Резервирование шлюза (Dual Gateway)</span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-1.5 py-0.2 rounded">99.99%</span>
                 </div>
                 <p className="text-zinc-400 text-[11px]">
-                  Chaos Sandbox, Time-Warp 600x, Автогенератор ТКП PDF, SpaceX 3D HUD, CAPEX Trade-Off, Docker-старт.
+                  Второй оптический терминал в Архангельске полностью исключает единую точку отказа (SPOF) Мурманска.
                 </p>
               </div>
             </div>
@@ -942,7 +971,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
             </div>
             <div className="text-right text-xs font-mono text-zinc-400">
               <span className="text-white font-bold">Спасибо за внимание!</span>
-              <div className="text-[10px] text-zinc-500">Готовы к защите решения</div>
+              <div className="text-[10px] text-zinc-500">Готовы к ответам на вопросы комиссии</div>
             </div>
           </div>
         </div>
