@@ -18,7 +18,10 @@ export const FleetSidebar: React.FC = () => {
     clearSelection,
     simulationResult,
     selectedClientId,
+    coverageMode,
+    setCoverageMode,
     coverageElevation,
+    setCoverageElevation,
   } = useSimulationStore()
 
   const [planeFilter, setPlaneFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL')
@@ -378,6 +381,78 @@ export const FleetSidebar: React.FC = () => {
                     </div>
                     <div className="text-[8.5px] text-zinc-400 mt-0.5">
                       {coverageMetrics.activeSatsInArctic} КА над регионом
+                    </div>
+                  </div>
+                </div>
+
+                {/* Controls: Режим + Угол */}
+                <div className="pt-1.5 border-t border-white/10 flex flex-col gap-1 text-[9px] font-sans">
+                  {/* Mode Selector */}
+                  <div className="flex items-center justify-between gap-1 bg-black/40 px-2 py-1 rounded-lg border border-white/5">
+                    <span className="text-zinc-400 font-mono text-[9px]">Режим:</span>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => setCoverageMode('all')}
+                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                          coverageMode === 'all'
+                            ? 'bg-white/20 text-white font-bold'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Показывать зоны всех активных КА"
+                      >
+                        Все КА
+                      </button>
+                      <button
+                        onClick={() => setCoverageMode('route')}
+                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                          coverageMode === 'route'
+                            ? 'bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500/40'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Показывать только зоны КА в текущем маршруте связи"
+                      >
+                        В маршруте
+                      </button>
+                      <button
+                        onClick={() => setCoverageMode('off')}
+                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                          coverageMode === 'off'
+                            ? 'bg-white/20 text-white font-bold'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Скрыть зоны радиопокрытия"
+                      >
+                        Скрыть
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Elevation Angle Selector */}
+                  <div className="flex items-center justify-between gap-1 bg-black/40 px-2 py-1 rounded-lg border border-white/5">
+                    <span className="text-zinc-400 font-mono text-[9px]">Угол:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCoverageElevation(25)}
+                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                          coverageElevation === 25
+                            ? 'bg-emerald-500/25 text-emerald-200 font-bold border border-emerald-500/30'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Минимальный угол места 25° ТЗ (радиус зоны ~940 км)"
+                      >
+                        25° ТЗ
+                      </button>
+                      <button
+                        onClick={() => setCoverageElevation(10)}
+                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                          coverageElevation === 10
+                            ? 'bg-sky-500/25 text-sky-200 font-bold border border-sky-500/30'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Радиогоризонт 10° (радиус зоны ~1665 км)"
+                      >
+                        10° Гор.
+                      </button>
                     </div>
                   </div>
                 </div>
