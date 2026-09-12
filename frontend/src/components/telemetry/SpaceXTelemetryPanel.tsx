@@ -11,6 +11,12 @@ import {
   XCircle,
   Compass,
   Download,
+  Server,
+  Signal,
+  MapPin,
+  X,
+  Activity,
+  Layers,
 } from 'lucide-react'
 import { groundPosition } from '@/core/geometryEngine'
 
@@ -19,7 +25,10 @@ export const SpaceXTelemetryPanel: React.FC = () => {
     currentTime_s,
     selectedClientId,
     selectedSatelliteId,
+    selectedTarget,
     setSelectedSatellite,
+    setSelectedStation,
+    clearSelection,
     simulationResult,
     recalculate,
   } = useSimulationStore()
@@ -29,6 +38,8 @@ export const SpaceXTelemetryPanel: React.FC = () => {
     killSatelliteNow,
     restoreSatelliteNow,
     clearAllSatelliteFailures,
+    killGatewayNow,
+    restoreGatewayNow,
     exportSandboxScenario,
   } = useScenarioStore()
 
@@ -134,6 +145,56 @@ export const SpaceXTelemetryPanel: React.FC = () => {
       .padStart(2, '0')}`
   }
 
+  const isGroundSelected = selectedTarget?.type === 'ground'
+  const groundSite = useMemo(() => {
+    if (!isGroundSelected || !activeScenario) return null
+    return activeScenario.ground_sites.find((g) => g.id === selectedTarget.id) || null
+  }, [isGroundSelected, activeScenario, selectedTarget])
+
+  const isGateway = groundSite?.role === 'gateway'
+
+  const isGatewayOffline = useMemo(() => {
+    if (!groundSite || !isGateway || !activeScenario) return false
+    return (activeScenario.gateway_outages || []).some(
+      (f) => f.gateway_id === groundSite.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+    )
+  }, [groundSite, isGateway, activeScenario, currentTime_s])
+
+  const gatewayFailure = useMemo(() => {
+    if (!groundSite || !isGateway || !activeScenario) return null
+    return (activeScenario.gateway_outages || []).find(
+      (f) => f.gateway_id === groundSite.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+    )
+  }, [groundSite, isGateway, activeScenario, currentTime_s])
+
+  const groundElevations = useMemo(() => {
+    if (!groundSite || !currentSnap) return []
+    const elevMap = currentSnap.elevation_deg[groundSite.id] || {}
+    const list: Array<{ id: string; plane: string; elev: number; active: boolean }> = []
+    for (const [sid, el] of Object.entries(elevMap)) {
+      const sat = currentSnap.satellites.find((s) => s.id === sid)
+      if (el >= (activeScenario?.environment.min_elevation_deg || 10)) {
+        list.push({
+          id: sid,
+          plane: sat?.plane_id || 'P1',
+          elev: Math.round(el),
+          active: sat?.active ?? true,
+        })
+      }
+    }
+    return list.sort((a, b) => b.elev - a.elev)
+  }, [groundSite, currentSnap, activeScenario])
+
+  const handleToggleGatewaySim = () => {
+    if (!groundSite) return
+    if (isGatewayOffline) {
+      restoreGatewayNow(groundSite.id, currentTime_s)
+    } else {
+      killGatewayNow(groundSite.id, currentTime_s)
+    }
+    recalculate()
+  }
+
   const handleSimulateOutage = () => {
     killSatelliteNow(satId, currentTime_s)
     recalculate()
@@ -173,45 +234,234 @@ export const SpaceXTelemetryPanel: React.FC = () => {
       }}
       className="select-none font-mono shadow-2xl shrink-0 flex flex-col overflow-hidden text-zinc-200"
     >
-      {/* Header */}
-      <div className="p-3.5 pb-2.5 border-b border-white/10 shrink-0">
-        <div className="flex items-start justify-between">
-          <div>
-            <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-widest font-sans block leading-none">
-              ТЕЛЕМЕТРИЯ АППАРАТА
-            </span>
-            <h2 className="text-base font-black text-white font-sans mt-1 leading-tight flex items-center gap-2">
-              <span>КА {satId}</span>
-              <span className="text-xs font-mono font-normal text-zinc-400">
-                ({planeId})
-              </span>
-            </h2>
-            <div className="text-[10px] font-mono text-zinc-400 mt-0.5">
-              550 км LEO • Наклонение 87°
+      {isGroundSelected && groundSite ? (
+        /* Ground Station Telemetry View */
+        <>
+          {/* Header */}
+          <div className="p-3.5 pb-2.5 border-b border-white/10 shrink-0">
+            <div className="flex items-start justify-between">
+              <div className="max-w-[210px]">
+                <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-widest font-sans block leading-none">
+                  {isGateway ? 'ОПОРНЫЙ ШЛЮЗ СЕТИ' : 'ТЕРМИНАЛ АБОНЕНТА (СМП)'}
+                </span>
+                <h2 className="text-sm font-black text-white font-sans mt-1 leading-tight truncate">
+                  {groundSite.name}
+                </h2>
+                <div className="text-[10px] font-mono text-zinc-400 mt-0.5">
+                  {groundSite.id} • {groundSite.lat_deg.toFixed(1)}°N, {groundSite.lon_deg.toFixed(1)}°E
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={clearSelection}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+                  title="Снять фокус и вернуть общий обзор камеры"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-sans border uppercase ${
-              !satObj?.active
-                ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
-                : routeRole !== 'STANDBY'
-                ? 'bg-white text-zinc-950 border-white'
-                : 'bg-white/10 border-white/20 text-zinc-300'
-            }`}
-          >
-            {!satObj?.active
-              ? 'Отказ'
-              : routeRole === 'CLIENT_ACCESS'
-              ? 'Доступ'
-              : routeRole === 'GATEWAY_LINK'
-              ? 'Шлюз'
-              : routeRole === 'TRANSIT_RELAY'
-              ? 'Транзит'
-              : 'В резерве'}
-          </span>
-        </div>
-      </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {/* Card 1: Live Connection & Incident Status */}
+            <div className="bg-black/40 border border-white/10 rounded-xl p-2.5 space-y-2 font-sans">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Состояние узла</span>
+                </span>
+                <span
+                  className={`text-[9px] px-2 py-0.5 rounded font-bold font-mono uppercase border ${
+                    isGateway
+                      ? isGatewayOffline
+                        ? 'bg-rose-950/60 text-rose-300 border-rose-500/40 animate-pulse'
+                        : 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
+                      : isConnected
+                      ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
+                      : 'bg-amber-950/50 text-amber-300 border-amber-500/40'
+                  }`}
+                >
+                  {isGateway
+                    ? isGatewayOffline
+                      ? '● Авария шлюза'
+                      : '● В эфире'
+                    : isConnected
+                    ? '● Маршрут OK'
+                    : '● Разрыв связи'}
+                </span>
+              </div>
+
+              {isGateway ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+                    {isGatewayOffline
+                      ? 'Внимание: шлюзовая станция выведена из строя! Трафик с полярных спутников не принимается и перенаправляется на резервные узлы.'
+                      : 'Шлюз функционирует в штатном режиме, обеспечивает приём трафика с КА и сброс в наземную магистраль.'}
+                  </p>
+
+                  {gatewayFailure && (
+                    <div className="p-1.5 bg-rose-950/30 border border-rose-500/20 rounded-lg text-[10px] text-rose-200 font-mono flex justify-between items-center">
+                      <span>Окно аварии:</span>
+                      <span className="font-bold">
+                        {formatSec(gatewayFailure.start_s)} —{' '}
+                        {gatewayFailure.end_s >= (activeScenario?.environment.horizon_s || 86400)
+                          ? 'конец суток'
+                          : formatSec(gatewayFailure.end_s)}
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleToggleGatewaySim}
+                    className={`w-full py-1.5 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all border flex items-center justify-center gap-1.5 ${
+                      isGatewayOffline
+                        ? 'bg-emerald-950/50 hover:bg-emerald-900/70 border-emerald-500/40 text-emerald-200 shadow-sm'
+                        : 'bg-rose-950/50 hover:bg-rose-900/70 border-rose-500/40 text-rose-200 shadow-sm'
+                    }`}
+                  >
+                    {isGatewayOffline ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Ввести шлюз в строй</span>
+                      </>
+                    ) : (
+                      <>
+                        <ZapOff className="w-3.5 h-3.5" />
+                        <span>Смоделировать отказ шлюза</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 font-mono text-[11px]">
+                  <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                    <span className="text-zinc-400 font-sans">Шлюз назначения:</span>
+                    <b className="text-white font-mono">
+                      {currentTimeline?.path ? currentTimeline.path[currentTimeline.path.length - 1] : '—'}
+                    </b>
+                  </div>
+                  <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                    <span className="text-zinc-400 font-sans">Длина пути / Задержка:</span>
+                    <b className="text-white font-mono">
+                      {currentTimeline?.distance_km || 0} км (
+                      {currentTimeline?.distance_km
+                        ? ((currentTimeline.distance_km / 299.792) * 2).toFixed(1)
+                        : 0}{' '}
+                      мс)
+                    </b>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: Visible Satellites Table */}
+            <div className="bg-black/40 border border-white/10 rounded-xl p-2.5 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-sans">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>КА в зоне видимости (β ≥ 10°)</span>
+                </span>
+                <span className="text-[10px] font-mono text-zinc-400">
+                  Всего: <b className="text-white">{groundElevations.length}</b>
+                </span>
+              </div>
+
+              <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+                {groundElevations.length > 0 ? (
+                  groundElevations.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedSatellite(item.id)}
+                      className="flex items-center justify-between p-1.5 px-2 bg-white/[0.04] hover:bg-white/10 border border-white/5 rounded-lg cursor-pointer transition-colors text-[11px] font-mono"
+                      title="Выбрать этот КА и навести камеру"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{item.id}</span>
+                        <span className="text-[9px] text-zinc-400 font-sans">({item.plane})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-bold">{item.elev}°</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-500" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-2 font-mono">
+                    Нет активных КА в зоне радиовидимости
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Card 3: Global Sandbox Export */}
+            <div className="bg-black/40 border border-white/10 rounded-xl p-2.5 flex items-center justify-between font-sans">
+              <span className="text-xs text-zinc-400">Сценарий песочницы:</span>
+              <button
+                onClick={exportSandboxScenario}
+                className="flex items-center gap-1 text-xs text-zinc-200 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/15 cursor-pointer transition-colors font-mono"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Экспорт JSON</span>
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Satellite Telemetry View */
+        <>
+          {/* Header */}
+          <div className="p-3.5 pb-2.5 border-b border-white/10 shrink-0">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-widest font-sans block leading-none">
+                  ТЕЛЕМЕТРИЯ АППАРАТА
+                </span>
+                <h2 className="text-base font-black text-white font-sans mt-1 leading-tight flex items-center gap-2">
+                  <span>КА {satId}</span>
+                  <span className="text-xs font-mono font-normal text-zinc-400">
+                    ({planeId})
+                  </span>
+                </h2>
+                <div className="text-[10px] font-mono text-zinc-400 mt-0.5">
+                  550 км LEO • Наклонение 87°
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-sans border uppercase ${
+                    !satObj?.active
+                      ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                      : routeRole !== 'STANDBY'
+                      ? 'bg-white text-zinc-950 border-white'
+                      : 'bg-white/10 border-white/20 text-zinc-300'
+                  }`}
+                >
+                  {!satObj?.active
+                    ? 'Отказ'
+                    : routeRole === 'CLIENT_ACCESS'
+                    ? 'Доступ'
+                    : routeRole === 'GATEWAY_LINK'
+                    ? 'Шлюз'
+                    : routeRole === 'TRANSIT_RELAY'
+                    ? 'Транзит'
+                    : 'В резерве'}
+                </span>
+
+                {selectedSatelliteId && (
+                  <button
+                    onClick={clearSelection}
+                    className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors ml-1"
+                    title="Снять фокус и вернуть общий обзор камеры"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {/* Card 1: Подспутниковая точка и радиовидимость */}
@@ -491,6 +741,8 @@ export const SpaceXTelemetryPanel: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
-  )
+    </>
+  )}
+</div>
+)
 }

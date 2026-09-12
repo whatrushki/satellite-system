@@ -63,8 +63,8 @@ export const App: React.FC = () => {
             </ErrorBoundary>
           </div>
 
-          {/* 5. Floating Bottom Center: Timeline Dock (neatly docked between sidebars, zero overlap) */}
-          <div className="absolute left-4 right-4 md:left-[300px] md:right-[320px] bottom-3 z-30 pointer-events-auto max-w-5xl mx-auto">
+          {/* 5. Floating Bottom Center: Timeline Dock (stretches cleanly across available space between sidebars) */}
+          <div className="absolute left-[296px] right-[316px] bottom-3 z-30 pointer-events-auto px-1">
             <ErrorBoundary fallbackTitle="Временная шкала и диаграмма доступности">
               <TimelineDock />
             </ErrorBoundary>

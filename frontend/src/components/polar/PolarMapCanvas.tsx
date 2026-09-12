@@ -12,6 +12,9 @@ export const PolarMapCanvas: React.FC = () => {
     setSelectedClient,
     selectedSatelliteId,
     setSelectedSatellite,
+    selectedTarget,
+    setSelectedStation,
+    clearSelection,
     simulationResult,
   } = useSimulationStore()
 
@@ -22,18 +25,6 @@ export const PolarMapCanvas: React.FC = () => {
     y: number
     details: string
   } | null>(null)
-
-  // Animation frame ticker for continuous packet flow
-  const [animTick, setAnimTick] = useState(0)
-  useEffect(() => {
-    let frameId: number
-    const loop = () => {
-      setAnimTick((t) => (t + 1) % 100000)
-      frameId = requestAnimationFrame(loop)
-    }
-    frameId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(frameId)
-  }, [])
 
   // Current snapshot from simulation result
   const step = simulationResult?.step_s || 120
@@ -59,13 +50,22 @@ export const PolarMapCanvas: React.FC = () => {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const rect = canvas.getBoundingClientRect()
-    canvas.width = rect.width * window.devicePixelRatio
-    canvas.height = rect.height * window.devicePixelRatio
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+    let animId: number
 
-    const w = rect.width
-    const h = rect.height
+    const draw = () => {
+      const rect = canvas.getBoundingClientRect()
+      if (
+        canvas.width !== Math.round(rect.width * window.devicePixelRatio) ||
+        canvas.height !== Math.round(rect.height * window.devicePixelRatio)
+      ) {
+        canvas.width = rect.width * window.devicePixelRatio
+        canvas.height = rect.height * window.devicePixelRatio
+      }
+      ctx.save()
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0)
+
+      const w = rect.width
+      const h = rect.height
     const cx = w / 2
     const cy = h / 2
     const maxRadius = Math.min(w, h) * 0.44
@@ -136,11 +136,23 @@ export const PolarMapCanvas: React.FC = () => {
         if (g.lat_deg < minLat) continue
         const [gx, gy] = latLonToXY(g.lat_deg, g.lon_deg)
         const isClient = g.role === 'client'
-        const isSelected = g.id === selectedClientId
-        const isReceiving = activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+        const isSelected =
+          selectedTarget?.type === 'ground'
+            ? selectedTarget.id === g.id
+            : isClient && g.id === selectedClientId
+        const isReceiving =
+          activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+
+        const isGatewayOffline =
+          g.role === 'gateway' &&
+          (activeScenario.gateway_outages || []).some(
+            (f) => f.gateway_id === g.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+          )
 
         // Status-driven Color
-        const statusColor = isClient
+        const statusColor = isGatewayOffline
+          ? '#ef4444' // Red for outage
+          : isClient
           ? isSelected
             ? isConnected
               ? '#10b981' // Emerald
@@ -160,9 +172,16 @@ export const PolarMapCanvas: React.FC = () => {
         ctx.save()
         ctx.beginPath()
         ctx.arc(gx, gy, coneRadius, 0, 2 * Math.PI)
-        ctx.fillStyle = isSelected || isReceiving ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'
+        ctx.fillStyle = isGatewayOffline
+          ? 'rgba(239, 68, 68, 0.06)'
+          : isSelected || isReceiving
+          ? 'rgba(255, 255, 255, 0.04)'
+          : 'rgba(255, 255, 255, 0.02)'
         ctx.strokeStyle = statusColor
-        ctx.lineWidth = isSelected || isReceiving ? 1.5 : 0.75
+        ctx.lineWidth = isSelected || isReceiving || isGatewayOffline ? 1.5 : 0.75
+        if (isGatewayOffline) {
+          ctx.setLineDash([4, 4])
+        }
         ctx.fill()
         ctx.stroke()
         ctx.restore()
@@ -184,19 +203,37 @@ export const PolarMapCanvas: React.FC = () => {
           ctx.rotate(Math.PI / 4)
           ctx.fillStyle = statusColor
           ctx.fillRect(-5.5, -5.5, 11, 11)
-          ctx.strokeStyle = '#060911'
-          ctx.lineWidth = 1.5
+          ctx.strokeStyle = isGatewayOffline ? '#fca5a5' : '#060911'
+          ctx.lineWidth = isGatewayOffline ? 2.0 : 1.5
           ctx.strokeRect(-5.5, -5.5, 11, 11)
           ctx.restore()
         }
 
         // Station ID Label
-        ctx.font = isSelected ? 'bold 11px monospace' : '10px monospace'
-        ctx.fillStyle = isSelected ? '#ffffff' : '#a1a1aa'
-        ctx.fillText(`${g.id} (${g.role === 'gateway' ? 'Шлюз' : 'Клиент'})`, gx + 9, gy - 4)
+        ctx.font = isSelected || isGatewayOffline ? 'bold 11px monospace' : '10px monospace'
+        ctx.fillStyle = isGatewayOffline ? '#ef4444' : isSelected ? '#ffffff' : '#a1a1aa'
+        const roleLabel = isGatewayOffline ? 'ШЛЮЗ (ОТКАЗ)' : g.role === 'gateway' ? 'Шлюз' : 'Клиент'
+        ctx.fillText(`${g.id} (${roleLabel})`, gx + 9, gy - 4)
 
         // Connection Status Badge Pill above node
-        if (isClient && isSelected) {
+        if (isGatewayOffline) {
+          const badgeText = '● ШЛЮЗ НЕ РАБОТАЕТ (ОТКАЗ)'
+          const badgeBg = 'rgba(239, 68, 68, 0.25)'
+          const badgeBorder = '#ef4444'
+
+          ctx.font = 'bold 9px monospace'
+          const tw = ctx.measureText(badgeText).width
+          ctx.fillStyle = badgeBg
+          ctx.strokeStyle = badgeBorder
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.roundRect(gx - tw / 2 - 5, gy - 23, tw + 10, 14, 4)
+          ctx.fill()
+          ctx.stroke()
+
+          ctx.fillStyle = badgeBorder
+          ctx.fillText(badgeText, gx - tw / 2, gy - 12)
+        } else if (isClient && isSelected) {
           const badgeText = isConnected ? '● СВЯЗЬ: OK' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ'
           const badgeBg = isConnected
             ? 'rgba(16, 185, 129, 0.25)'
@@ -373,7 +410,10 @@ export const PolarMapCanvas: React.FC = () => {
 
         const [sx, sy] = latLonToXY(lat, lon)
         const isInRoute = activeRoutePath.includes(sat.id)
-        const isSelected = sat.id === selectedSatelliteId
+        const isSelected =
+          selectedTarget?.type === 'sat'
+            ? selectedTarget.id === sat.id
+            : sat.id === selectedSatelliteId
         const isHovered = hoveredNode?.id === sat.id
 
         ctx.save()
@@ -430,15 +470,29 @@ export const PolarMapCanvas: React.FC = () => {
         ctx.restore()
       }
     }
+
+    ctx.restore()
+
+    // High performance 60fps packet stream without triggering React re-renders
+    if (activeRoutePath.length >= 2) {
+      animId = requestAnimationFrame(draw)
+    }
+  }
+
+  draw()
+
+  return () => {
+    if (animId) cancelAnimationFrame(animId)
+  }
   }, [
     activeScenario,
     currentTime_s,
     selectedClientId,
     selectedSatelliteId,
+    selectedTarget,
     hoveredNode,
     currentSnap,
     activeRoutePath,
-    animTick,
   ])
 
   // Mouse interaction: Hover & Click
@@ -468,12 +522,18 @@ export const PolarMapCanvas: React.FC = () => {
       if (g.lat_deg < minLat) continue
       const [gx, gy] = latLonToXY(g.lat_deg, g.lon_deg)
       if (Math.hypot(mx - gx, my - gy) < 12) {
+        const isOffline =
+          g.role === 'gateway' &&
+          (activeScenario.gateway_outages || []).some(
+            (f) => f.gateway_id === g.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+          )
+        const roleLabel = isOffline ? '🔴 ШЛЮЗ - ОТКАЗ' : g.role === 'gateway' ? 'ШЛЮЗ' : 'АБОНЕНТ'
         setHoveredNode({
           id: g.id,
           type: 'ground',
           x: mx,
           y: my,
-          details: `${g.name || g.id} [${g.role === 'gateway' ? 'ШЛЮЗ' : 'АБОНЕНТ'}] (${g.lat_deg}°N, ${g.lon_deg}°E)`,
+          details: `${g.name || g.id} [${roleLabel}] (${g.lat_deg}°N, ${g.lon_deg}°E)`,
         })
         return
       }
@@ -504,12 +564,12 @@ export const PolarMapCanvas: React.FC = () => {
   }
 
   const handleClick = () => {
-    if (!hoveredNode) return
+    if (!hoveredNode) {
+      clearSelection()
+      return
+    }
     if (hoveredNode.type === 'ground') {
-      const g = activeScenario?.ground_sites.find((s) => s.id === hoveredNode.id)
-      if (g && g.role === 'client') {
-        setSelectedClient(g.id)
-      }
+      setSelectedStation(hoveredNode.id)
     } else if (hoveredNode.type === 'sat') {
       setSelectedSatellite(hoveredNode.id)
     }

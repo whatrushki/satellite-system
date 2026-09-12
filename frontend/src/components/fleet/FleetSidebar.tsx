@@ -3,7 +3,7 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { OrbitConfigurator } from '@/components/sidebar/OrbitConfigurator'
 import { OutageManager } from '@/components/sidebar/OutageManager'
-import { Radio, Network, CheckCircle2, XCircle } from 'lucide-react'
+import { Radio, Network, CheckCircle2, XCircle, MapPin, Server, Signal } from 'lucide-react'
 
 export const FleetSidebar: React.FC = () => {
   const activeScenario = useScenarioStore((state) => state.activeScenario)
@@ -11,12 +11,15 @@ export const FleetSidebar: React.FC = () => {
     currentTime_s,
     selectedSatelliteId,
     setSelectedSatellite,
+    selectedTarget,
+    setSelectedStation,
+    clearSelection,
     simulationResult,
     selectedClientId,
   } = useSimulationStore()
 
   const [planeFilter, setPlaneFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL')
-  const [activeTab, setActiveTab] = useState<'fleet' | 'orbits' | 'outages'>('fleet')
+  const [activeTab, setActiveTab] = useState<'fleet' | 'stations' | 'orbits' | 'outages'>('fleet')
 
   const step = simulationResult?.step_s || 120
   const idx = Math.floor(currentTime_s / step)
@@ -108,18 +111,26 @@ export const FleetSidebar: React.FC = () => {
       <div className="p-3.5 pb-2 border-b border-white/10 shrink-0">
         <div className="flex items-center justify-between">
           {/* Subtab switcher */}
-          <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-xl border border-white/10 text-[11px] font-sans">
+          <div className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/10 text-[10px] font-sans">
             <button
               onClick={() => setActiveTab('fleet')}
-              className={`px-2.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'fleet' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Флот КА
+              Флот
+            </button>
+            <button
+              onClick={() => setActiveTab('stations')}
+              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
+                activeTab === 'stations' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Станции
             </button>
             <button
               onClick={() => setActiveTab('orbits')}
-              className={`px-2.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'orbits' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -127,7 +138,7 @@ export const FleetSidebar: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('outages')}
-              className={`px-2.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'outages' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -135,7 +146,7 @@ export const FleetSidebar: React.FC = () => {
             </button>
           </div>
 
-          <span className="text-[10px] font-mono text-zinc-200 font-bold bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+          <span className="text-[10px] font-mono text-zinc-200 font-bold bg-white/5 px-1.5 py-0.5 rounded-md border border-white/10">
             {activeSatsCount}/{totalSatsCount}
           </span>
         </div>
@@ -163,6 +174,160 @@ export const FleetSidebar: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-2">
         {activeTab === 'orbits' && <OrbitConfigurator />}
         {activeTab === 'outages' && <OutageManager />}
+        {activeTab === 'stations' && (
+          <div className="flex flex-col gap-2.5">
+            {/* 1. Gateways section */}
+            <div className="text-[10px] uppercase font-bold text-zinc-400 px-1 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Server className="w-3 h-3 text-zinc-300" />
+                <span>Шлюзы опорной сети</span>
+              </span>
+              <span className="font-mono text-zinc-500">
+                {activeScenario.ground_sites.filter((g) => g.role === 'gateway').length}
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {activeScenario.ground_sites
+                .filter((g) => g.role === 'gateway')
+                .map((gw) => {
+                  const isOffline = (activeScenario.gateway_outages || []).some(
+                    (f) => f.gateway_id === gw.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+                  )
+                  const isSelected = selectedTarget?.type === 'ground' && selectedTarget.id === gw.id
+                  const elevMap = currentSnap?.elevation_deg[gw.id] || {}
+                  const visibleSats = Object.entries(elevMap).filter(
+                    ([sid, el]) => el >= minEl && currentSnap?.satellites.find((s) => s.id === sid)?.active
+                  )
+
+                  return (
+                    <div
+                      key={gw.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          clearSelection()
+                        } else {
+                          setSelectedStation(gw.id)
+                        }
+                      }}
+                      className={`p-2 rounded-xl transition-all cursor-pointer border text-xs ${
+                        isSelected
+                          ? 'bg-white/15 border-white/40 shadow-sm'
+                          : isOffline
+                          ? 'bg-rose-950/25 border-rose-500/30 hover:border-rose-500/50'
+                          : 'bg-black/35 border-white/5 hover:border-white/15'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white font-mono text-[11px]">{gw.id}</span>
+                          <span className="text-[10px] text-zinc-400 truncate max-w-[120px]">{gw.name}</span>
+                        </div>
+                        <span
+                          className={`text-[8px] px-1.5 py-0.2 rounded font-sans font-bold uppercase border ${
+                            isOffline
+                              ? 'bg-rose-950/60 text-rose-300 border-rose-500/40 animate-pulse'
+                              : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
+                          }`}
+                        >
+                          {isOffline ? 'Отказ' : 'В сети'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-1 text-[10px] text-zinc-400 font-mono pt-1 border-t border-white/5">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-zinc-500" />
+                          <span>{gw.lat_deg.toFixed(1)}°N, {gw.lon_deg.toFixed(1)}°E</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Radio className="w-3 h-3 text-zinc-500" />
+                          <span>КА: </span>
+                          <b className={visibleSats.length > 0 ? 'text-white' : 'text-zinc-500'}>
+                            {visibleSats.length}
+                          </b>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+
+            {/* 2. Clients section */}
+            <div className="text-[10px] uppercase font-bold text-zinc-400 px-1 pt-1 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Signal className="w-3 h-3 text-zinc-300" />
+                <span>Терминалы абонентов (СМП)</span>
+              </span>
+              <span className="font-mono text-zinc-500">
+                {activeScenario.ground_sites.filter((g) => g.role === 'client').length}
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {activeScenario.ground_sites
+                .filter((g) => g.role === 'client')
+                .map((cl) => {
+                  const isSelected =
+                    (selectedTarget?.type === 'ground' && selectedTarget.id === cl.id) ||
+                    (!selectedTarget && selectedClientId === cl.id)
+                  const clientSummary = simulationResult?.clients.find((c) => c.client_id === cl.id)
+                  const curItem = clientSummary?.timeline.find((t) => t.t_s === idx * step)
+                  const isConn = curItem?.status === 'connected'
+                  const elevMap = currentSnap?.elevation_deg[cl.id] || {}
+                  const hasVis = Object.values(elevMap).some((el) => el >= minEl)
+
+                  return (
+                    <div
+                      key={cl.id}
+                      onClick={() => {
+                        if (selectedTarget?.type === 'ground' && selectedTarget.id === cl.id) {
+                          clearSelection()
+                        } else {
+                          setSelectedStation(cl.id)
+                        }
+                      }}
+                      className={`p-2 rounded-xl transition-all cursor-pointer border text-xs ${
+                        isSelected
+                          ? 'bg-white/15 border-white/40 shadow-sm'
+                          : 'bg-black/35 border-white/5 hover:border-white/15'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white font-mono text-[11px]">{cl.id}</span>
+                          <span className="text-[10px] text-zinc-400 truncate max-w-[120px]">{cl.name}</span>
+                        </div>
+                        <span
+                          className={`text-[8px] px-1.5 py-0.2 rounded font-sans font-bold uppercase border ${
+                            isConn
+                              ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
+                              : hasVis
+                              ? 'bg-amber-950/40 text-amber-300 border-amber-500/30'
+                              : 'bg-rose-950/40 text-rose-300 border-rose-500/30'
+                          }`}
+                        >
+                          {isConn ? 'Маршрут OK' : hasVis ? 'Разрыв МИС' : 'Вне зоны'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-1 text-[10px] text-zinc-400 font-mono pt-1 border-t border-white/5">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-zinc-500" />
+                          <span>{cl.lat_deg.toFixed(1)}°N</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>Готовность: </span>
+                          <b className="text-white">
+                            {clientSummary?.path_availability_pct.toFixed(0)}%
+                          </b>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+        )}
         {activeTab === 'fleet' && (
           <div className="flex flex-col gap-1.5">
             {satsList.map((sat) => {

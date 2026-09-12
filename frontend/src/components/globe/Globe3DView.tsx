@@ -149,8 +149,21 @@ export const Globe3DView: React.FC = () => {
     setSelectedClient,
     selectedSatelliteId,
     setSelectedSatellite,
+    selectedTarget,
+    setSelectedStation,
+    clearSelection,
     simulationResult,
   } = useSimulationStore()
+
+  const selectedTargetRef = useRef(selectedTarget)
+  useEffect(() => {
+    selectedTargetRef.current = selectedTarget
+  }, [selectedTarget])
+
+  const activeScenarioRef = useRef(activeScenario)
+  useEffect(() => {
+    activeScenarioRef.current = activeScenario
+  }, [activeScenario])
 
   const sceneRef = useRef<THREE.Scene | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -160,6 +173,11 @@ export const Globe3DView: React.FC = () => {
   const linksGroupRef = useRef<THREE.Group | null>(null)
   const routeGroupRef = useRef<THREE.Group | null>(null)
   const orbitRingsGroupRef = useRef<THREE.Group | null>(null)
+
+  // Camera tracking refs
+  const satPosMapRef = useRef<Map<string, THREE.Vector3>>(new Map())
+  const controlsTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0))
+  const isDraggingRef = useRef(false)
 
   // Fast mesh node handles for continuous 60fps real-time orbit rendering
   const satNodesMapRef = useRef<Map<string, {
@@ -412,9 +430,13 @@ export const Globe3DView: React.FC = () => {
 
     const onMouseDown = (e: MouseEvent) => {
       isDragging = true
+      isDraggingRef.current = true
       prevMousePos = { x: e.clientX, y: e.clientY }
       downPos = { x: e.clientX, y: e.clientY }
       downTime = performance.now()
+
+      const rel = camera.position.clone().sub(controlsTargetRef.current)
+      spherical.setFromVector3(rel)
     }
 
     const onMouseMove = (e: MouseEvent) => {
@@ -425,8 +447,8 @@ export const Globe3DView: React.FC = () => {
 
         spherical.theta -= dx * 0.007
         spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi - dy * 0.007))
-        camera.position.setFromSpherical(spherical)
-        camera.lookAt(0, 0, 0)
+        camera.position.setFromSpherical(spherical).add(controlsTargetRef.current)
+        camera.lookAt(controlsTargetRef.current)
       } else {
         // Hover raycast: show pointer cursor when hovering over ground sites or satellites
         if (satGroupRef.current) {
@@ -453,6 +475,7 @@ export const Globe3DView: React.FC = () => {
 
     const onMouseUp = (e: MouseEvent) => {
       isDragging = false
+      isDraggingRef.current = false
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y)
       const duration = performance.now() - downTime
 
@@ -464,6 +487,7 @@ export const Globe3DView: React.FC = () => {
           -((e.clientY - rect.top) / rect.height) * 2 + 1
         )
         raycaster.setFromCamera(mouse, camera)
+        let clickedTarget = false
         if (satGroupRef.current) {
           const hits = raycaster.intersectObjects(satGroupRef.current.children, true)
           for (const hit of hits) {
@@ -471,23 +495,30 @@ export const Globe3DView: React.FC = () => {
             while (o && !o.userData?.type) o = o.parent
             if (o && o.userData?.type) {
               if (o.userData.type === 'ground') {
-                useSimulationStore.getState().setSelectedClient(o.userData.id)
+                useSimulationStore.getState().setSelectedStation(o.userData.id)
+                clickedTarget = true
                 return
               } else if (o.userData.type === 'satellite') {
                 useSimulationStore.getState().setSelectedSatellite(o.userData.id)
+                clickedTarget = true
                 return
               }
             }
           }
+        }
+        if (!clickedTarget) {
+          // Clicked in empty space -> smoothly return to global Arctic overview!
+          useSimulationStore.getState().clearSelection()
         }
       }
     }
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      spherical.radius = Math.max(9, Math.min(60, spherical.radius + e.deltaY * 0.015))
-      camera.position.setFromSpherical(spherical)
-      camera.lookAt(0, 0, 0)
+      const minR = selectedTargetRef.current ? 1.5 : 8.0
+      spherical.radius = Math.max(minR, Math.min(60, spherical.radius + e.deltaY * 0.015))
+      camera.position.setFromSpherical(spherical).add(controlsTargetRef.current)
+      camera.lookAt(controlsTargetRef.current)
     }
 
     const dom = renderer.domElement
@@ -507,6 +538,10 @@ export const Globe3DView: React.FC = () => {
     }
     window.addEventListener('resize', onResize)
 
+    // Smooth camera target vectors
+    const targetLookAt = new THREE.Vector3(0, 0, 0)
+    const targetCamPos = new THREE.Vector3(0, 15, 20)
+
     // Animation Loop
     let animId: number
     const animate = () => {
@@ -520,6 +555,40 @@ export const Globe3DView: React.FC = () => {
       // Smooth real-time update in WebGL frame loop
       const curT = useSimulationStore.getState().currentTime_s
       updateRealtimePositionsRef.current?.(curT)
+
+      // Smooth Camera Follow & Auto-Framing
+      const currentTarget = selectedTargetRef.current
+      if (currentTarget?.type === 'sat') {
+        const satPos = satPosMapRef.current.get(currentTarget.id)
+        if (satPos) {
+          targetLookAt.copy(satPos)
+          const radial = satPos.clone().normalize()
+          // Orbit chase view: smoothly place camera slightly outside and above the satellite
+          targetCamPos.copy(satPos).add(radial.clone().multiplyScalar(3.2)).add(new THREE.Vector3(0, 1.1, 0))
+        }
+      } else if (currentTarget?.type === 'ground') {
+        const g = activeScenarioRef.current?.ground_sites.find((s) => s.id === currentTarget.id)
+        if (g) {
+          const [gx, gy, gz] = groundPosition(g.lat_deg, g.lon_deg)
+          const pos = ecefToThree(gx, gy, gz)
+          targetLookAt.copy(pos)
+          const normal = pos.clone().normalize()
+          // Ground station perspective: looking down onto station with passing orbit overhead
+          targetCamPos.copy(pos).add(normal.clone().multiplyScalar(3.8)).add(new THREE.Vector3(0, 0.9, 0))
+        }
+      } else {
+        // Global Arctic overview
+        targetLookAt.set(0, 0, 0)
+        targetCamPos.set(0, 15, 20)
+      }
+
+      if (!isDraggingRef.current) {
+        controlsTargetRef.current.lerp(targetLookAt, 0.06)
+        camera.position.lerp(targetCamPos, 0.06)
+        camera.lookAt(controlsTargetRef.current)
+      } else {
+        camera.lookAt(controlsTargetRef.current)
+      }
 
       // Animate flowing data packets along active route
       if (packetMeshGroupRef.current && currentRoutePointsRef.current.length >= 2) {
@@ -644,11 +713,24 @@ export const Globe3DView: React.FC = () => {
       const [gx, gy, gz] = groundPosition(g.lat_deg, g.lon_deg)
       const pos = ecefToThree(gx, gy, gz)
       const isClient = g.role === 'client'
-      const isSelected = g.id === selectedClientId
-      const isReceiving = activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+      const isSelected =
+        selectedTarget?.type === 'ground'
+          ? selectedTarget.id === g.id
+          : isClient && g.id === selectedClientId
+      const isReceiving =
+        activeRoutePath.length >= 2 && activeRoutePath[activeRoutePath.length - 1] === g.id
+
+      // Check for active gateway outage at current time
+      const isGatewayOffline =
+        g.role === 'gateway' &&
+        (activeScenario.gateway_outages || []).some(
+          (f) => f.gateway_id === g.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+        )
 
       // Status-driven Color
-      const statusColorHex = isClient
+      const statusColorHex = isGatewayOffline
+        ? 0xef4444 // Red for gateway outage
+        : isClient
         ? isSelected
           ? isConnected
             ? 0x10b981 // Emerald (Connected)
@@ -670,7 +752,7 @@ export const Globe3DView: React.FC = () => {
       satGroup.add(pinMesh)
 
       // Interactive Ground Marker Dot (generous hit target)
-      const dotRadius = isSelected ? 0.14 : isClient ? 0.11 : 0.13
+      const dotRadius = isSelected ? 0.15 : isClient ? 0.11 : 0.13
       const dotGeo = new THREE.SphereGeometry(dotRadius, 12, 12)
       const dotMat = new THREE.MeshBasicMaterial({ color: statusColorHex })
       const dotMesh = new THREE.Mesh(dotGeo, dotMat)
@@ -678,11 +760,11 @@ export const Globe3DView: React.FC = () => {
       dotMesh.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
       satGroup.add(dotMesh)
 
-      // Ground Target Ring if Selected or Receiving
-      if (isSelected || isReceiving) {
+      // Ground Target Ring if Outage, Selected or Receiving
+      if (isGatewayOffline || isSelected || isReceiving) {
         const ringGeo = new THREE.RingGeometry(0.24, 0.30, 32)
         const ringMat = new THREE.MeshBasicMaterial({
-          color: statusColorHex,
+          color: isGatewayOffline ? 0xef4444 : statusColorHex,
           side: THREE.DoubleSide,
           transparent: true,
           opacity: 0.90,
@@ -694,10 +776,21 @@ export const Globe3DView: React.FC = () => {
       }
 
       // Floating text label above ground station
+      const labelText = isGatewayOffline
+        ? `[🔴 ШЛЮЗ (ОТКАЗ)] ${g.name}`
+        : g.role === 'gateway'
+        ? `[ШЛЮЗ] ${g.name}`
+        : `[АБОНЕНТ] ${g.id}`
+      const labelColor = isGatewayOffline
+        ? '#ef4444'
+        : isSelected
+        ? '#ffffff'
+        : '#cbd5e1'
+
       const groundLabel = createTextSprite(
-        g.role === 'gateway' ? `[ШЛЮЗ] ${g.name}` : `[АБОНЕНТ] ${g.id}`,
-        isSelected ? '#ffffff' : '#cbd5e1',
-        0.75,
+        labelText,
+        labelColor,
+        isGatewayOffline ? 0.95 : 0.75,
         0.18
       )
       groundLabel.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
@@ -705,7 +798,11 @@ export const Globe3DView: React.FC = () => {
       satGroup.add(groundLabel)
 
       // Connection Status Badge Sprite directly above the node
-      if (isClient && isSelected) {
+      if (isGatewayOffline) {
+        const statusBadge = createTextSprite('[🔴 ШЛЮЗ НЕ РАБОТАЕТ (ОТКАЗ)]', '#ef4444', 0.95, 0.20)
+        statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        satGroup.add(statusBadge)
+      } else if (isClient && isSelected) {
         const statusText = isConnected ? '● СВЯЗЬ: АКТИВНА' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ КА'
         const statusColor = isConnected ? '#10b981' : hasSatVis ? '#f59e0b' : '#ef4444'
         const statusBadge = createTextSprite(`[${statusText}]`, statusColor, 0.85, 0.19)
@@ -735,7 +832,10 @@ export const Globe3DView: React.FC = () => {
         y_km: 0,
         z_km: 0,
       }
-      const isSelected = sat.id === selectedSatelliteId
+      const isSelected =
+        selectedTarget?.type === 'sat'
+          ? selectedTarget.id === sat.id
+          : sat.id === selectedSatelliteId
       const isInRoute = activeRoutePath.includes(sat.id)
       const codename = `КА ${sat.id}`
 
@@ -889,7 +989,7 @@ export const Globe3DView: React.FC = () => {
       pMesh.visible = false
       packetMeshGroup.add(pMesh)
     }
-  }, [activeScenario, activeRoutePath, selectedClientId, selectedSatelliteId])
+  }, [activeScenario, activeRoutePath, selectedClientId, selectedSatelliteId, selectedTarget, currentTime_s])
 
   // Continuous real-time position update function
   const updateRealtimePositions = useCallback(
@@ -966,6 +1066,8 @@ export const Globe3DView: React.FC = () => {
           }
         }
       }
+
+      satPosMapRef.current = satPosMap
 
       // Update ISL links
       if (islLineRef.current && currentSnap) {

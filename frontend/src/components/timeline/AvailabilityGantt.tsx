@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, XCircle } from 'lucide-react'
 
 export const AvailabilityGantt: React.FC = () => {
-  const { simulationResult, currentTime_s, setTime, selectedClientId, setSelectedClient } =
+  const { simulationResult, currentTime_s, setTime, selectedClientId, selectedTarget, setSelectedStation } =
     useSimulationStore()
   const trackRef = useRef<HTMLDivElement | null>(null)
 
@@ -25,54 +25,57 @@ export const AvailabilityGantt: React.FC = () => {
 
   return (
     <div className="w-full flex flex-col gap-1.5 font-mono text-xs select-none">
-      <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-        <span>ДИАГРАММА ДОСТУПНОСТИ И ПЕРЕРЫВОВ СВЯЗИ (24 ЧАСА, ШАГ 120 СЕК)</span>
+      <div className="flex items-center justify-between text-[11px] text-zinc-400 px-1">
+        <span className="tracking-wide">ДИАГРАММА ДОСТУПНОСТИ И ПЕРЕРЫВОВ СВЯЗИ (24 ЧАСА, ШАГ 120 СЕК)</span>
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-emerald-400">
+          <span className="flex items-center gap-1.5 text-emerald-400">
             <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Маршрут есть
           </span>
-          <span className="flex items-center gap-1 text-amber-400">
+          <span className="flex items-center gap-1.5 text-amber-400">
             <span className="h-2 w-2 rounded-full bg-amber-500"></span> ISL Partition (разрыв сети)
           </span>
-          <span className="flex items-center gap-1 text-rose-400">
-            <span className="h-2 w-2 rounded-full bg-rose-500"></span> Нет спутника
+          <span className="flex items-center gap-1.5 text-red-400">
+            <span className="h-2 w-2 rounded-full bg-red-500"></span> Нет спутника / отказ
           </span>
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 bg-slate-950/80 p-2 border border-slate-800 rounded-lg">
+      <div className="flex flex-col gap-1.5 bg-black/60 p-2 border border-white/10 rounded-xl">
         {simulationResult.clients.map((client) => {
-          const isSelected = client.client_id === selectedClientId
+          const isSelected =
+            selectedTarget?.type === 'ground'
+              ? selectedTarget.id === client.client_id
+              : client.client_id === selectedClientId
           return (
             <div
               key={client.client_id}
-              className={`flex items-center gap-3 p-1 rounded transition-colors ${
-                isSelected ? 'bg-slate-900 border border-amber-500/40' : 'hover:bg-slate-900/50'
+              className={`flex items-center gap-3 p-1 rounded-lg transition-colors border ${
+                isSelected ? 'bg-white/10 border-white/30 text-white' : 'hover:bg-white/5 border-transparent'
               }`}
             >
               {/* Terminal Label and Select Button */}
               <button
-                onClick={() => setSelectedClient(client.client_id)}
+                onClick={() => setSelectedStation(client.client_id)}
                 className="w-24 text-left flex items-center justify-between cursor-pointer"
               >
-                <span className={`font-bold text-xs ${isSelected ? 'text-amber-400' : 'text-slate-300'}`}>
+                <span className={`font-bold text-xs ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
                   {client.client_id}
                 </span>
-                <span className="text-[10px] text-slate-500">{client.lat_deg}°N</span>
+                <span className="text-[10px] text-zinc-500">{client.lat_deg}°N</span>
               </button>
 
               {/* Gantt Strip */}
               <div
                 ref={trackRef}
                 onClick={handleTrackClick}
-                className="relative flex-1 h-5 bg-slate-900 rounded overflow-hidden cursor-pointer border border-slate-800/90"
+                className="relative flex-1 h-5 bg-zinc-950 rounded overflow-hidden cursor-pointer border border-white/10"
               >
                 <div className="absolute inset-0 flex">
                   {client.timeline.map((item, i) => {
                     let bg = '#10b981' // connected
                     if (item.status === 'visible_no_route') bg = '#f59e0b'
                     else if (item.status === 'no_satellite' || item.status === 'gateway_outage')
-                      bg = '#f43f5e'
+                      bg = '#ef4444'
 
                     return (
                       <div
@@ -90,14 +93,14 @@ export const AvailabilityGantt: React.FC = () => {
                 {/* Current Time Cursor */}
                 <div
                   style={{ left: `${progressRatio * 100}%` }}
-                  className="absolute top-0 bottom-0 w-[2px] bg-white z-10 pointer-events-none"
+                  className="absolute top-0 bottom-0 w-[2px] bg-white z-10 pointer-events-none shadow-[0_0_4px_white]"
                 />
               </div>
 
               {/* Stats badges */}
               <div className="w-56 flex items-center justify-end gap-2 text-right">
-                <span className="text-[11px] text-slate-400">
-                  Макс: <b className="text-slate-200">{client.max_gap_minutes}м</b>
+                <span className="text-[11px] text-zinc-400">
+                  Макс: <b className="text-zinc-200">{client.max_gap_minutes}м</b>
                 </span>
                 <Badge variant={client.target_met ? 'success' : 'destructive'} className="h-5 px-1.5">
                   {client.path_availability_pct.toFixed(1)}%

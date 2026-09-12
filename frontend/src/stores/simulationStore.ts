@@ -9,6 +9,7 @@ interface SimulationState {
   playbackSpeed: number
   selectedClientId: string
   selectedSatelliteId: string | null
+  selectedTarget: { type: 'sat' | 'ground'; id: string } | null
   viewMode: '2d' | '3d'
   activeTab: 'dashboard' | 'compare' | 'recommendations'
   simulationResult: SimulationResult | null
@@ -21,6 +22,9 @@ interface SimulationState {
   setPlaybackSpeed: (speed: number) => void
   setSelectedClient: (id: string) => void
   setSelectedSatellite: (id: string | null) => void
+  setSelectedTarget: (target: { type: 'sat' | 'ground'; id: string } | null) => void
+  setSelectedStation: (id: string) => void
+  clearSelection: () => void
   setViewMode: (mode: '2d' | '3d') => void
   setActiveTab: (tab: 'dashboard' | 'compare' | 'recommendations') => void
   recalculate: () => void
@@ -33,6 +37,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   playbackSpeed: 1,
   selectedClientId: 'C65',
   selectedSatelliteId: null,
+  selectedTarget: null,
   viewMode: '3d',
   activeTab: 'dashboard',
   simulationResult: null,
@@ -68,11 +73,59 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   setSelectedClient: (id: string) => {
-    set({ selectedClientId: id })
+    set({
+      selectedClientId: id,
+      selectedTarget: { type: 'ground', id },
+      selectedSatelliteId: null,
+    })
   },
 
   setSelectedSatellite: (id: string | null) => {
-    set({ selectedSatelliteId: id })
+    if (id) {
+      set({
+        selectedSatelliteId: id,
+        selectedTarget: { type: 'sat', id },
+      })
+    } else {
+      set({
+        selectedSatelliteId: null,
+        selectedTarget: get().selectedTarget?.type === 'sat' ? null : get().selectedTarget,
+      })
+    }
+  },
+
+  setSelectedTarget: (target) => {
+    if (!target) {
+      set({ selectedTarget: null, selectedSatelliteId: null })
+      return
+    }
+    if (target.type === 'sat') {
+      set({
+        selectedTarget: target,
+        selectedSatelliteId: target.id,
+      })
+    } else {
+      set({
+        selectedTarget: target,
+        selectedSatelliteId: null,
+        selectedClientId: target.id.startsWith('C') ? target.id : get().selectedClientId,
+      })
+    }
+  },
+
+  setSelectedStation: (id: string) => {
+    set({
+      selectedTarget: { type: 'ground', id },
+      selectedSatelliteId: null,
+      selectedClientId: id.startsWith('C') ? id : get().selectedClientId,
+    })
+  },
+
+  clearSelection: () => {
+    set({
+      selectedTarget: null,
+      selectedSatelliteId: null,
+    })
   },
 
   setViewMode: (mode: '2d' | '3d') => {

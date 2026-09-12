@@ -166,7 +166,7 @@ export const RecommendationsView: React.FC = () => {
         description: `Текущая конфигурация развёрнута по ${activeScenario.design.launch_stage}-й очереди (${currentSats} КА). Наблюдаются регулярные провалы радиовидимости.`,
         currentValue: `${activeScenario.design.launch_stage}-я очер. (${currentSats} КА)`,
         targetValue: '3-я очер. (48 КА, 3 пл.)',
-        impact: '100% непрерывное радиопокрытие арктических терминалов без слепых зон',
+        impact: 'Проектное покрытие арктических терминалов (достижение оптимума ~98.5%)',
       })
     }
 
@@ -200,8 +200,8 @@ export const RecommendationsView: React.FC = () => {
 
     const isAlreadyOptimal = fixes.length === 0 && clientsOverview.allMet
     const predictedAvailability = isAlreadyOptimal
-      ? 100
-      : Math.min(100, Math.max(98.5, clientsOverview.avgAvail + fixes.length * 15))
+      ? clientsOverview.avgAvail
+      : Math.min(98.5, Math.max(98.1, clientsOverview.avgAvail + fixes.length * 15))
 
     return {
       fixes,
@@ -236,7 +236,7 @@ export const RecommendationsView: React.FC = () => {
     const optId = `opt_${activeScenario.meta.id}`
     optimized.meta = {
       id: optId,
-      title: `${activeScenario.meta.title} (Оптимизировано 100%)`,
+      title: `${activeScenario.meta.title} (Оптимизировано, проектный оптимум ~98.5%)`,
     }
 
     // Register into scenario store
@@ -313,7 +313,7 @@ export const RecommendationsView: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-zinc-400 font-sans mt-0.5">
-                Алгоритм анализирует сценарий, выявляет лимитирующие факторы и рассчитывает корректировку для достижения 100% работоспособности.
+                Алгоритм анализирует сценарий, выявляет лимитирующие факторы и рассчитывает корректировку для достижения проектного максимума (~98.5%).
               </p>
             </div>
           </div>

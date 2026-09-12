@@ -40,13 +40,17 @@ interface ScenarioState {
   updatePlane: (planeId: string, raan: number, phase: number) => void
   addFailure: (f: FailureOutage) => void
   removeFailure: (index: number) => void
+  clearAllFailures: () => void
   killSatelliteNow: (satId: string, currentTime_s: number) => void
   restoreSatelliteNow: (satId: string, currentTime_s: number) => void
   clearAllSatelliteFailures: (satId: string) => void
+  killGatewayNow: (gatewayId: string, currentTime_s: number) => void
+  restoreGatewayNow: (gatewayId: string, currentTime_s: number) => void
   exportSandboxScenario: () => void
   toggleGatewayOutage: (gatewayId: string, start_s: number, end_s: number) => void
   saveCurrentVariant: (customTitle?: string) => void
   deleteVariant: (id: string) => void
+  removeScenario: (id: string) => Promise<void>
   resetToOriginal: () => Promise<void>
 }
 
@@ -157,6 +161,18 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
     set({ activeScenario: updated })
   },
 
+  clearAllFailures: () => {
+    const cur = get().activeScenario
+    if (!cur) return
+    set({
+      activeScenario: {
+        ...cur,
+        failures: [],
+        gateway_outages: [],
+      },
+    })
+  },
+
   killSatelliteNow: (satId: string, currentTime_s: number) => {
     const cur = get().activeScenario
     if (!cur) return
@@ -255,6 +271,60 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
     URL.revokeObjectURL(url)
   },
 
+  killGatewayNow: (gatewayId: string, currentTime_s: number) => {
+    const cur = get().activeScenario
+    if (!cur) return
+    const step = cur.environment.step_s
+    const horizon = cur.environment.horizon_s
+    const start_s = Math.floor(currentTime_s / step) * step
+
+    const exists = (cur.gateway_outages || []).some(
+      (g) => g.gateway_id === gatewayId && g.start_s <= currentTime_s && currentTime_s < g.end_s
+    )
+    if (exists) return
+
+    set({
+      activeScenario: {
+        ...cur,
+        gateway_outages: [
+          ...(cur.gateway_outages || []),
+          { gateway_id: gatewayId, start_s, end_s: horizon },
+        ],
+      },
+    })
+  },
+
+  restoreGatewayNow: (gatewayId: string, currentTime_s: number) => {
+    const cur = get().activeScenario
+    if (!cur) return
+    const step = cur.environment.step_s
+    const curQuantized = Math.floor(currentTime_s / step) * step
+    const list = [...(cur.gateway_outages || [])]
+
+    const idx = list.findIndex(
+      (g) => g.gateway_id === gatewayId && g.start_s <= currentTime_s && currentTime_s < g.end_s
+    )
+    if (idx !== -1) {
+      if (curQuantized > list[idx].start_s) {
+        list[idx] = { ...list[idx], end_s: Math.max(list[idx].start_s + step, curQuantized) }
+      } else {
+        list.splice(idx, 1)
+      }
+    } else {
+      const futureIdx = list.findIndex((g) => g.gateway_id === gatewayId && g.start_s >= curQuantized)
+      if (futureIdx !== -1) {
+        list.splice(futureIdx, 1)
+      }
+    }
+
+    set({
+      activeScenario: {
+        ...cur,
+        gateway_outages: list,
+      },
+    })
+  },
+
   toggleGatewayOutage: (gatewayId: string, start_s: number, end_s: number) => {
     const cur = get().activeScenario
     if (!cur) return
@@ -291,6 +361,15 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
 
   deleteVariant: (id: string) => {
     set({ savedVariants: get().savedVariants.filter((v) => v.id !== id) })
+  },
+
+  removeScenario: async (id: string) => {
+    const list = get().availableScenarios.filter((s) => s.id !== id)
+    set({ availableScenarios: list })
+    if (get().activeScenarioId === id) {
+      const nextId = list[0]?.id || '01_full_constellation'
+      await get().loadDefaultScenario(nextId)
+    }
   },
 
   resetToOriginal: async () => {
