@@ -96,7 +96,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
     }
 
     // Fallback: Scenario-specific pre-generated PDF or global report.pdf
-    const scenarioPdf = activeScenarioId ? `./report_${activeScenarioId}.pdf` : './report.pdf'
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`
+    const scenarioPdf = activeScenarioId ? `${baseUrl}report_${activeScenarioId}.pdf` : `${baseUrl}report.pdf`
     window.open(scenarioPdf, '_blank')
     setIsGeneratingReport(false)
   }

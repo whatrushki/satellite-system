@@ -314,16 +314,20 @@ export const Globe3DView: React.FC = () => {
     spaceFill.position.set(-20, -10, -20)
     scene.add(spaceFill)
 
-    // Texture Loader
+    // Texture Loader with GitHub Pages & relative subpath support
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`
     const textureLoader = new THREE.TextureLoader()
-    const earthMap = textureLoader.load('/earth_atmos_2048.jpg')
-    const specularMap = textureLoader.load('/earth_specular_2048.jpg')
-    const normalMap = textureLoader.load('/earth_normal_2048.jpg')
-    const cloudsMap = textureLoader.load('/earth_clouds_1024.png')
+    const earthMap = textureLoader.load(`${baseUrl}earth_atmos_2048.jpg`)
+    const specularMap = textureLoader.load(`${baseUrl}earth_specular_2048.jpg`)
+    const normalMap = textureLoader.load(`${baseUrl}earth_normal_2048.jpg`)
+    const cloudsMap = textureLoader.load(`${baseUrl}earth_clouds_1024.png`)
 
     // 1. Photorealistic Earth Globe with High-Contrast B&W Monochrome Filter
     const earthGeo = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64)
     const earthMat = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(0x1a2333), // Deep oceanic slate base color
       map: earthMap,
       specularMap: specularMap,
       specular: new THREE.Color(0x3f3f46),

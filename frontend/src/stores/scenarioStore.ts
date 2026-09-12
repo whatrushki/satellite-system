@@ -1,5 +1,11 @@
 import { create } from 'zustand'
 import { Scenario, EnvironmentConfig, FailureOutage } from '../core/types'
+import sc01 from '../../../Данные/01_full_constellation.json'
+import sc02 from '../../../Данные/02_first_launch.json'
+import sc03 from '../../../Данные/03_satellite_outages.json'
+import sc04 from '../../../Данные/04_link_range.json'
+import sc05 from '../../../Данные/05_sparse_planes.json'
+import sc06 from '../../../Данные/06_dual_gateway_failover.json'
 
 export interface SavedVariant {
   id: string
@@ -16,12 +22,12 @@ export interface ScenarioRegistryItem {
 }
 
 const DEFAULT_SCENARIOS: ScenarioRegistryItem[] = [
-  { id: '01_full_constellation', label: '01: Полная (48 КА)' },
-  { id: '02_first_launch', label: '02: 1-я очер. (16 КА)' },
-  { id: '03_satellite_outages', label: '03: Отказы 10 КА' },
-  { id: '04_link_range', label: '04: ISL 2000 км' },
-  { id: '05_sparse_planes', label: '05: Разреженная (24 КА)' },
-  { id: '06_dual_gateway_failover', label: '06: Мурманск + Тикси' },
+  { id: '01_full_constellation', label: '01: Полная (48 КА)', scenario: sc01 as unknown as Scenario },
+  { id: '02_first_launch', label: '02: 1-я очер. (16 КА)', scenario: sc02 as unknown as Scenario },
+  { id: '03_satellite_outages', label: '03: Отказы 10 КА', scenario: sc03 as unknown as Scenario },
+  { id: '04_link_range', label: '04: ISL 2000 км', scenario: sc04 as unknown as Scenario },
+  { id: '05_sparse_planes', label: '05: Разреженная (24 КА)', scenario: sc05 as unknown as Scenario },
+  { id: '06_dual_gateway_failover', label: '06: Мурманск + Тикси', scenario: sc06 as unknown as Scenario },
 ]
 
 interface ScenarioState {
@@ -58,12 +64,12 @@ interface ScenarioState {
 }
 
 export const useScenarioStore = create<ScenarioState>((set, get) => ({
-  activeScenario: null,
+  activeScenario: sc01 as unknown as Scenario,
   activeScenarioId: '01_full_constellation',
   availableScenarios: DEFAULT_SCENARIOS,
   savedVariants: [],
-  scenarioOriginalFailures: [],
-  scenarioOriginalGateways: [],
+  scenarioOriginalFailures: JSON.parse(JSON.stringify((sc01 as any).failures || [])),
+  scenarioOriginalGateways: JSON.parse(JSON.stringify((sc01 as any).gateway_outages || [])),
   isLoading: false,
   error: null,
 
@@ -82,7 +88,10 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
     }
     set({ isLoading: true, error: null })
     try {
-      const res = await fetch(`/data/${id}.json`)
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+        ? import.meta.env.BASE_URL
+        : `${import.meta.env.BASE_URL}/`
+      const res = await fetch(`${baseUrl}data/${id}.json`)
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data: Scenario = await res.json()
       const updatedList = get().availableScenarios.map((item) =>

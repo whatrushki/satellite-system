@@ -541,7 +541,10 @@ export const ComparisonView: React.FC = () => {
       return
     }
 
-    fetch(`/data/${selectedAId}.json`)
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`
+    fetch(`${baseUrl}data/${selectedAId}.json`)
       .then((res) => res.json())
       .then((data) => setScenarioA(data))
       .catch((err) => console.error('Failed to load scenario A:', err))
@@ -564,7 +567,10 @@ export const ComparisonView: React.FC = () => {
       return
     }
 
-    fetch(`/data/${selectedBId}.json`)
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`
+    fetch(`${baseUrl}data/${selectedBId}.json`)
       .then((res) => res.json())
       .then((data) => setScenarioB(data))
       .catch((err) => console.error('Failed to load scenario B:', err))
