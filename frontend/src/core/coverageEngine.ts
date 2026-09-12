@@ -1,6 +1,16 @@
 import { Scenario } from './types'
 import { R, SatPosition, groundPosition } from './geometryEngine'
 
+export interface ClientCoverageState {
+  inFootprint10: boolean
+  inFootprint25: boolean
+  elevationDeg: number
+  nearestSatId?: string
+  servingSatId?: string
+  linkQuality: 'optimal' | 'good' | 'horizon' | 'none'
+  isDirectSingleHop: boolean // Can single satellite see both client and gateway directly?
+}
+
 export interface CoverageMetrics {
   // Total Earth surface covered by active satellites [million km^2]
   totalCoveredAreaMkm2: number
@@ -19,8 +29,14 @@ export interface CoverageMetrics {
   activeSatsInArctic: number
   // Number of active satellites producing coverage
   totalActiveSats: number
-  // Clients currently inside at least one active satellite footprint
-  coveredClients: Record<string, { inFootprint: boolean; nearestSatId?: string; elevationDeg: number }>
+  // Multi-tier radii for display
+  tier10: { radiusKm: number; alphaDeg: number; alphaRad: number; areaMkm2: number }
+  tier25: { radiusKm: number; alphaDeg: number; alphaRad: number; areaMkm2: number }
+  tier55: { radiusKm: number; alphaDeg: number; alphaRad: number; areaMkm2: number }
+  // Detailed status for each ground client
+  coveredClients: Record<string, ClientCoverageState>
+  // Whether current active route uses single-hop or multi-hop ISL
+  activeRouteHopType: 'direct_single_hop' | 'isl_multi_hop' | 'disconnected'
 }
 
 // Pre-computed quasi-uniform spherical Fibonacci points for instant, O(N) area integration
@@ -58,6 +74,30 @@ const SPHERE_SAMPLES: SphericalPoint[] = (() => {
 const TOTAL_ARCTIC_SAMPLES = SPHERE_SAMPLES.filter((p) => p.isArctic).length
 
 /**
+ * Computes the exact elevation angle [degrees] between ground station and satellite.
+ */
+export function computeElevationDeg(
+  gx: number, gy: number, gz: number,
+  sx: number, sy: number, sz: number,
+  rEarth: number = R
+): number {
+  const dx = sx - gx
+  const dy = sy - gy
+  const dz = sz - gz
+  const dl = Math.hypot(dx, dy, dz)
+  if (dl < 0.001) return 90
+
+  const gLen = Math.hypot(gx, gy, gz) || rEarth
+  const gnx = gx / gLen
+  const gny = gy / gLen
+  const gnz = gz / gLen
+
+  const dot = dx * gnx + dy * gny + dz * gnz
+  const sinEl = Math.max(-1, Math.min(1, dot / dl))
+  return (Math.asin(sinEl) * 180) / Math.PI
+}
+
+/**
  * Computes Earth central half-angle alpha for a satellite at altitude h and minimum elevation angle theta_min.
  * alpha = pi/2 - theta_min - beta, where sin(beta) = (R / (R + h)) * cos(theta_min)
  */
@@ -89,24 +129,38 @@ export function computeFootprintAlpha(altitudeKm: number, minElevationDeg: numbe
 }
 
 /**
- * Computes real-time coverage statistics across the globe and high-latitude Arctic zone.
+ * Computes real-time coverage statistics across the globe and high-latitude Arctic zone,
+ * evaluating multi-tier elevations (10°, 25°, 55°) and physical link angles.
  */
 export function computeRealtimeCoverage(
   scenario: Scenario,
   satPositions: SatPosition[],
-  minElevationDeg: number = 25.0
+  minElevationDeg?: number,
+  activeRoutePath: string[] = []
 ): CoverageMetrics {
   const altitudeKm = scenario.environment.altitude_km || 550.0
-  const { alphaRad, alphaDeg, radiusKm, areaMkm2 } = computeFootprintAlpha(
-    altitudeKm,
-    minElevationDeg
-  )
+  const primaryElDeg = minElevationDeg ?? scenario.environment.min_elevation_deg ?? 10.0
+
+  const tier10 = computeFootprintAlpha(altitudeKm, 10.0)
+  const tier25 = computeFootprintAlpha(altitudeKm, 25.0)
+  const tier55 = computeFootprintAlpha(altitudeKm, 55.0)
+
+  const primaryTier = computeFootprintAlpha(altitudeKm, primaryElDeg)
 
   const activeSats = satPositions.filter((s) => s.active)
   const totalActiveSats = activeSats.length
 
   // Pre-normalize active satellite directions in ECEF unit vectors
-  const satNormals: Array<{ id: string; nx: number; ny: number; nz: number; isArctic: boolean }> = []
+  const satNormals: Array<{
+    id: string
+    nx: number
+    ny: number
+    nz: number
+    x_km: number
+    y_km: number
+    z_km: number
+    isArctic: boolean
+  }> = []
   let activeSatsInArctic = 0
 
   for (const s of activeSats) {
@@ -116,26 +170,32 @@ export function computeRealtimeCoverage(
     const ny = s.y_km / len
     const nz = s.z_km / len
 
-    // Check latitude of satellite nadir
     const latDeg = (Math.asin(Math.max(-1, Math.min(1, nz))) * 180) / Math.PI
     const isArctic = latDeg >= 60.0
     if (isArctic) {
       activeSatsInArctic++
     }
 
-    satNormals.push({ id: s.id, nx, ny, nz, isArctic })
+    satNormals.push({
+      id: s.id,
+      nx,
+      ny,
+      nz,
+      x_km: s.x_km,
+      y_km: s.y_km,
+      z_km: s.z_km,
+      isArctic,
+    })
   }
 
-  // Threshold cosine for footprint: a point on sphere P is inside footprint if dot(P, SatNormal) >= cos(alpha)
-  const cosAlpha = Math.cos(alphaRad)
+  // Threshold cosine for primary footprint
+  const cosAlpha = Math.cos(primaryTier.alphaRad)
 
   let coveredGlobalCount = 0
   let coveredArcticCount = 0
 
   for (let i = 0; i < FIBONACCI_SAMPLE_COUNT; i++) {
     const pt = SPHERE_SAMPLES[i]
-    // In SPHERE_SAMPLES, Y is North Pole. But in ECEF, Z is North Pole.
-    // Map sample (x, y, z) -> ECEF unit (x, z, y) where z is polar axis
     const px = pt.x
     const py = pt.z
     const pz = pt.y
@@ -161,57 +221,96 @@ export function computeRealtimeCoverage(
   const globalCoverageRatio = FIBONACCI_SAMPLE_COUNT > 0 ? coveredGlobalCount / FIBONACCI_SAMPLE_COUNT : 0
   const arcticCoverageRatio = TOTAL_ARCTIC_SAMPLES > 0 ? coveredArcticCount / TOTAL_ARCTIC_SAMPLES : 0
 
-  // Total Earth area: 4 * pi * R^2 = ~510.06 million km^2
   const TOTAL_EARTH_MKM2 = (4 * Math.PI * R * R) / 1e6
   const totalCoveredAreaMkm2 = globalCoverageRatio * TOTAL_EARTH_MKM2
 
-  // Check client visibility
-  const coveredClients: CoverageMetrics['coveredClients'] = {}
+  // Gateway positions for single-hop relay checks
+  const gateways = scenario.ground_sites.filter((g) => g.role === 'gateway')
+
+  // Check client visibility and link quality
+  const coveredClients: Record<string, ClientCoverageState> = {}
+
   for (const g of scenario.ground_sites) {
     const [gx, gy, gz] = groundPosition(g.lat_deg, g.lon_deg)
-    const glen = R
-    const gnx = gx / glen
-    const gny = gy / glen
-    const gnz = gz / glen
 
-    let bestDot = -1
+    let maxEl = -90
     let nearestSatId: string | undefined
-    let maxElevation = -90
 
     for (const sat of satNormals) {
-      const dot = gnx * sat.nx + gny * sat.ny + gnz * sat.nz
-      if (dot > bestDot) {
-        bestDot = dot
+      const el = computeElevationDeg(gx, gy, gz, sat.x_km, sat.y_km, sat.z_km)
+      if (el > maxEl) {
+        maxEl = el
         nearestSatId = sat.id
       }
     }
 
-    // Convert dot product between ground station normal and satellite nadir to elevation angle
-    // Elevation: el = arcsin((r * dot - R) / dl)
-    if (bestDot > 0) {
-      const r_sat = R + altitudeKm
-      const dl = Math.sqrt(Math.max(0.1, r_sat * r_sat + R * R - 2 * r_sat * R * bestDot))
-      const sinEl = Math.max(-1, Math.min(1, (r_sat * bestDot - R) / dl))
-      maxElevation = (Math.asin(sinEl) * 180) / Math.PI
+    // Check if there is a serving sat in active route for this client
+    let servingSatId: string | undefined
+    if (activeRoutePath.length >= 3 && activeRoutePath[0] === g.id) {
+      servingSatId = activeRoutePath[1]
     }
 
-    coveredClients[g.id] = {
-      inFootprint: bestDot >= cosAlpha,
-      nearestSatId,
-      elevationDeg: Math.round(maxElevation * 10) / 10,
+    // Single-hop direct relay check: does any single active satellite see both this client AND a gateway?
+    let isDirectSingleHop = false
+    if (g.role === 'client') {
+      for (const sat of satNormals) {
+        const clientEl = computeElevationDeg(gx, gy, gz, sat.x_km, sat.y_km, sat.z_km)
+        if (clientEl >= (scenario.environment.min_elevation_deg || 10.0)) {
+          for (const gw of gateways) {
+            const [gwx, gwy, gwz] = groundPosition(gw.lat_deg, gw.lon_deg)
+            const gwEl = computeElevationDeg(gwx, gwy, gwz, sat.x_km, sat.y_km, sat.z_km)
+            if (gwEl >= (scenario.environment.min_elevation_deg || 10.0)) {
+              isDirectSingleHop = true
+              break
+            }
+          }
+        }
+        if (isDirectSingleHop) break
+      }
     }
+
+    const inFootprint10 = maxEl >= 10.0
+    const inFootprint25 = maxEl >= 25.0
+
+    let linkQuality: ClientCoverageState['linkQuality'] = 'none'
+    if (maxEl >= 50.0) linkQuality = 'optimal'
+    else if (maxEl >= 25.0) linkQuality = 'good'
+    else if (maxEl >= 10.0) linkQuality = 'horizon'
+
+    coveredClients[g.id] = {
+      inFootprint10,
+      inFootprint25,
+      elevationDeg: Math.round(maxEl * 10) / 10,
+      nearestSatId,
+      servingSatId,
+      linkQuality,
+      isDirectSingleHop,
+    }
+  }
+
+  let activeRouteHopType: CoverageMetrics['activeRouteHopType'] = 'disconnected'
+  if (activeRoutePath.length === 3) {
+    // Client -> Sat -> Gateway (Single-hop relay through one satellite!)
+    activeRouteHopType = 'direct_single_hop'
+  } else if (activeRoutePath.length > 3) {
+    // Client -> Sat1 -> ... -> SatN -> Gateway (Multi-hop transit via ISL laser grid)
+    activeRouteHopType = 'isl_multi_hop'
   }
 
   return {
     totalCoveredAreaMkm2: Math.round(totalCoveredAreaMkm2 * 10) / 10,
     globalCoveragePct: Math.round(globalCoverageRatio * 1000) / 10,
     arcticCoveragePct: Math.round(arcticCoverageRatio * 1000) / 10,
-    singleFootprintAreaMkm2: Math.round(areaMkm2 * 100) / 100,
-    footprintRadiusKm: Math.round(radiusKm),
-    alphaRad,
-    alphaDeg: Math.round(alphaDeg * 10) / 10,
+    singleFootprintAreaMkm2: Math.round(primaryTier.areaMkm2 * 100) / 100,
+    footprintRadiusKm: Math.round(primaryTier.radiusKm),
+    alphaRad: primaryTier.alphaRad,
+    alphaDeg: Math.round(primaryTier.alphaDeg * 10) / 10,
     activeSatsInArctic,
     totalActiveSats,
+    tier10,
+    tier25,
+    tier55,
     coveredClients,
+    activeRouteHopType,
   }
 }

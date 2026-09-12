@@ -44,7 +44,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   selectedTarget: null,
   viewMode: '3d',
   coverageMode: 'all',
-  coverageElevation: 25,
+  coverageElevation: 10,
   activeTab: 'dashboard',
   simulationResult: null,
   isCalculating: false,

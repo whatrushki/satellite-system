@@ -145,7 +145,9 @@ export const CoverageHUD: React.FC = () => {
             <div className="flex flex-col gap-1 mt-1">
               {activeScenario?.ground_sites.map((g) => {
                 const info = coverageMetrics.coveredClients[g.id]
-                const inZone = info?.inFootprint ?? false
+                const inZone = info?.inFootprint10 ?? false
+                const isCore = info?.inFootprint25 ?? false
+                const elev = info?.elevationDeg ?? 0
                 const isSelected = selectedClientId === g.id
                 const isClient = g.role === 'client'
 
@@ -162,7 +164,11 @@ export const CoverageHUD: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          inZone ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-rose-500'
+                          inZone
+                            ? isCore
+                              ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]'
+                              : 'bg-sky-400 shadow-[0_0_4px_#38bdf8]'
+                            : 'bg-rose-500'
                         }`}
                       />
                       <span className="font-bold">{g.id}</span>
@@ -171,19 +177,37 @@ export const CoverageHUD: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-[10px]">
+                    <div className="flex items-center gap-2 text-[10px]">
                       {inZone ? (
-                        <span className="text-emerald-400 font-semibold">
-                          В ЗОНЕ {info?.nearestSatId ? `[${info.nearestSatId}]` : ''}
-                        </span>
+                        <>
+                          <span className={`font-semibold ${isCore ? 'text-emerald-400' : 'text-sky-300'}`}>
+                            θ = {elev.toFixed(1)}°
+                          </span>
+                          <span className="text-zinc-400">
+                            {info?.nearestSatId ? `[${info.nearestSatId}]` : ''}
+                          </span>
+                        </>
                       ) : (
-                        <span className="text-rose-400 font-semibold">ВНЕ ЗОНЫ</span>
+                        <span className="text-rose-400 font-semibold">ВНЕ ЗОНЫ (θ &lt; 10°)</span>
                       )}
                     </div>
                   </div>
                 )
               })}
             </div>
+            {/* Route Hop Type Info */}
+            {isRouteConnected && (
+              <div className="text-[10px] font-mono mt-1 pt-1 border-t border-white/5 flex items-center justify-between text-zinc-400">
+                <span>Тип маршрута:</span>
+                <span className={`font-semibold ${
+                  coverageMetrics.activeRouteHopType === 'direct_single_hop' ? 'text-emerald-400' : 'text-cyan-400'
+                }`}>
+                  {coverageMetrics.activeRouteHopType === 'direct_single_hop'
+                    ? '⚡ 1 КА (прямая ретрансляция)'
+                    : '🔗 N хопов через МИС (лазер)'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footprint settings: Radius, Angle, Display Mode */}
