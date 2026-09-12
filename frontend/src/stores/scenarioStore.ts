@@ -91,9 +91,25 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
       const baseUrl = import.meta.env.BASE_URL.endsWith('/')
         ? import.meta.env.BASE_URL
         : `${import.meta.env.BASE_URL}/`
-      const res = await fetch(`${baseUrl}data/${id}.json`)
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-      const data: Scenario = await res.json()
+      const candidateUrls = [
+        `${baseUrl}Данные/${id}.json`,
+        `${baseUrl}data/${id}.json`,
+        `./Данные/${id}.json`,
+        `./data/${id}.json`,
+      ]
+      let data: Scenario | null = null
+      for (const url of candidateUrls) {
+        try {
+          const res = await fetch(url)
+          if (res.ok) {
+            data = await res.json()
+            break
+          }
+        } catch {
+          // try next path
+        }
+      }
+      if (!data) throw new Error(`Не удалось загрузить сценарий ${id}`)
       const updatedList = get().availableScenarios.map((item) =>
         item.id === id ? { ...item, scenario: data } : item
       )

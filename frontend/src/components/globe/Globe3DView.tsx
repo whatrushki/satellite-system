@@ -5,6 +5,10 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { groundPosition, computePositions } from '@/core/geometryEngine'
 import { AtmosphereGlowShader } from './AtmosphereShader'
 import { createStarfield } from './Starfield'
+import earthAtmosUrl from '@/assets/earth_atmos_2048.jpg'
+import earthSpecularUrl from '@/assets/earth_specular_2048.jpg'
+import earthNormalUrl from '@/assets/earth_normal_2048.jpg'
+import earthCloudsUrl from '@/assets/earth_clouds_1024.png'
 
 // Satellite geometries and materials
 
@@ -314,15 +318,12 @@ export const Globe3DView: React.FC = () => {
     spaceFill.position.set(-20, -10, -20)
     scene.add(spaceFill)
 
-    // Texture Loader with GitHub Pages & relative subpath support
-    const baseUrl = import.meta.env.BASE_URL.endsWith('/')
-      ? import.meta.env.BASE_URL
-      : `${import.meta.env.BASE_URL}/`
+    // Photorealistic Earth textures bundled via Vite static asset pipeline
     const textureLoader = new THREE.TextureLoader()
-    const earthMap = textureLoader.load(`${baseUrl}earth_atmos_2048.jpg`)
-    const specularMap = textureLoader.load(`${baseUrl}earth_specular_2048.jpg`)
-    const normalMap = textureLoader.load(`${baseUrl}earth_normal_2048.jpg`)
-    const cloudsMap = textureLoader.load(`${baseUrl}earth_clouds_1024.png`)
+    const earthMap = textureLoader.load(earthAtmosUrl)
+    const specularMap = textureLoader.load(earthSpecularUrl)
+    const normalMap = textureLoader.load(earthNormalUrl)
+    const cloudsMap = textureLoader.load(earthCloudsUrl)
 
     // 1. Photorealistic Earth Globe with High-Contrast B&W Monochrome Filter
     const earthGeo = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64)

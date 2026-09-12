@@ -544,8 +544,18 @@ export const ComparisonView: React.FC = () => {
     const baseUrl = import.meta.env.BASE_URL.endsWith('/')
       ? import.meta.env.BASE_URL
       : `${import.meta.env.BASE_URL}/`
-    fetch(`${baseUrl}data/${selectedAId}.json`)
-      .then((res) => res.json())
+    const loadJson = async (id: string) => {
+      for (const p of [`${baseUrl}Данные/${id}.json`, `${baseUrl}data/${id}.json`, `./Данные/${id}.json`, `./data/${id}.json`]) {
+        try {
+          const res = await fetch(p)
+          if (res.ok) return await res.json()
+        } catch {
+          // try next candidate
+        }
+      }
+      throw new Error(`Failed to load scenario ${id}`)
+    }
+    loadJson(selectedAId)
       .then((data) => setScenarioA(data))
       .catch((err) => console.error('Failed to load scenario A:', err))
   }, [selectedAId, activeScenarioId, activeScenario, availableScenarios, savedVariants])
@@ -570,8 +580,18 @@ export const ComparisonView: React.FC = () => {
     const baseUrl = import.meta.env.BASE_URL.endsWith('/')
       ? import.meta.env.BASE_URL
       : `${import.meta.env.BASE_URL}/`
-    fetch(`${baseUrl}data/${selectedBId}.json`)
-      .then((res) => res.json())
+    const loadJson = async (id: string) => {
+      for (const p of [`${baseUrl}Данные/${id}.json`, `${baseUrl}data/${id}.json`, `./Данные/${id}.json`, `./data/${id}.json`]) {
+        try {
+          const res = await fetch(p)
+          if (res.ok) return await res.json()
+        } catch {
+          // try next candidate
+        }
+      }
+      throw new Error(`Failed to load scenario ${id}`)
+    }
+    loadJson(selectedBId)
       .then((data) => setScenarioB(data))
       .catch((err) => console.error('Failed to load scenario B:', err))
   }, [selectedBId, activeScenarioId, activeScenario, availableScenarios, savedVariants])
