@@ -4,7 +4,8 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { OrbitConfigurator } from '@/components/sidebar/OrbitConfigurator'
 import { OutageManager } from '@/components/sidebar/OutageManager'
 import { Radio, Network, CheckCircle2, XCircle, MapPin, Server, Signal } from 'lucide-react'
-import { computeRealtimeCoverage } from '@/core/coverageEngine'
+import { getConstellationCoverage } from '@/core/coverageEngine'
+import { computePositions } from '@/core/geometryEngine'
 
 export const FleetSidebar: React.FC = () => {
   const activeScenario = useScenarioStore((state) => state.activeScenario)
@@ -39,17 +40,22 @@ export const FleetSidebar: React.FC = () => {
     return currentTimelineItem?.path || []
   }, [clientData, idx, step])
 
+  const currentPositions = useMemo(() => {
+    if (!activeScenario) return []
+    return computePositions(activeScenario, currentTime_s)
+  }, [activeScenario, currentTime_s])
+
   const satsList = useMemo(() => {
-    if (!currentSnap) return []
-    return currentSnap.satellites.filter((s) => {
+    if (!currentPositions.length) return []
+    return currentPositions.filter((s) => {
       if (planeFilter !== 'ALL' && s.plane_id !== planeFilter) return false
       return true
     })
-  }, [currentSnap, planeFilter])
+  }, [currentPositions, planeFilter])
 
   const activeSatsCount = useMemo(() => {
-    return currentSnap?.satellites.filter((s) => s.active).length ?? 0
-  }, [currentSnap])
+    return currentPositions.filter((s) => s.active).length
+  }, [currentPositions])
 
   const totalSatsCount = activeScenario?.design.satellites.length ?? 48
 
@@ -76,21 +82,9 @@ export const FleetSidebar: React.FC = () => {
   }, [activeScenario])
 
   const coverageMetrics = useMemo(() => {
-    if (!activeScenario || !currentSnap) return null
-    return computeRealtimeCoverage(
-      activeScenario,
-      currentSnap.satellites.map((s) => ({
-        id: s.id,
-        plane_id: s.plane_id || '',
-        active: s.active,
-        x_km: s.x_km,
-        y_km: s.y_km,
-        z_km: s.z_km,
-      })),
-      coverageElevation || 10.0,
-      activeRoutePath
-    )
-  }, [activeScenario, currentSnap, coverageElevation, activeRoutePath])
+    if (!activeScenario) return null
+    return getConstellationCoverage(activeScenario, currentTime_s, coverageElevation, activeRoutePath)
+  }, [activeScenario, currentTime_s, coverageElevation, activeRoutePath])
 
   const singleSatAreaMkm2 = coverageMetrics?.singleFootprintAreaMkm2 ?? 8.7
   const singleSatRadiusKm = coverageMetrics?.footprintRadiusKm ?? 1665
@@ -369,18 +363,18 @@ export const FleetSidebar: React.FC = () => {
                   <div className="bg-white/5 p-1.5 rounded-lg border border-white/5">
                     <div className="text-[8.5px] text-zinc-400 uppercase tracking-wide">Земной шар</div>
                     <div className="text-xs font-black text-white mt-0.5 tabular-nums">
-                      {coverageMetrics.totalCoveredAreaMkm2}{' '}
+                      {coverageMetrics.totalCoveredAreaMkm2.toFixed(1)}{' '}
                       <span className="text-[8.5px] text-zinc-400 font-normal">млн км²</span>
                     </div>
                     <div className="text-[8.5px] text-zinc-400 mt-0.5">
-                      {coverageMetrics.globalCoveragePct}% Земли
+                      {coverageMetrics.globalCoveragePct.toFixed(1)}% Земли
                     </div>
                   </div>
 
                   <div className="bg-white/5 p-1.5 rounded-lg border border-white/5">
                     <div className="text-[8.5px] text-zinc-400 uppercase tracking-wide">Арктика (≥65°)</div>
                     <div className="text-xs font-black text-emerald-400 mt-0.5 tabular-nums flex items-center gap-1">
-                      <span>{coverageMetrics.arcticCoveragePct}%</span>
+                      <span>{coverageMetrics.arcticCoveragePct.toFixed(1)}%</span>
                     </div>
                     <div className="text-[8.5px] text-zinc-400 mt-0.5">
                       {coverageMetrics.activeSatsInArctic} КА над регионом

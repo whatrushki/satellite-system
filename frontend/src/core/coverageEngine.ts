@@ -1,5 +1,5 @@
 import { Scenario } from './types'
-import { R, SatPosition, groundPosition } from './geometryEngine'
+import { R, SatPosition, groundPosition, computePositions } from './geometryEngine'
 
 export interface ClientCoverageState {
   inFootprint10: boolean
@@ -314,3 +314,35 @@ export function computeRealtimeCoverage(
     activeRouteHopType,
   }
 }
+
+let lastKey = ''
+let lastMetrics: CoverageMetrics | null = null
+
+/**
+ * Synchronously cached real-time coverage evaluation.
+ * When called by multiple UI components (e.g. FleetSidebar and CoverageHUD)
+ * in the same animation tick, it calculates the analytical orbital positions
+ * and Fibonacci sphere coverage once, returning the exact same metrics object.
+ */
+export function getConstellationCoverage(
+  scenario: Scenario,
+  currentTime_s: number,
+  minElevationDeg: number = 10.0,
+  activeRoutePath: string[] = []
+): CoverageMetrics {
+  const routeKey = activeRoutePath.join(',')
+  // Cache key: scenario ID, current second rounded to 0.1s for fast real-time sync, elevation, active route
+  const timeKey = Math.round(currentTime_s * 10) / 10
+  const key = `${scenario.meta.id}_${timeKey}_${minElevationDeg}_${routeKey}`
+
+  if (key === lastKey && lastMetrics) {
+    return lastMetrics
+  }
+
+  const positions = computePositions(scenario, currentTime_s)
+  const metrics = computeRealtimeCoverage(scenario, positions, minElevationDeg, activeRoutePath)
+  lastKey = key
+  lastMetrics = metrics
+  return metrics
+}
+

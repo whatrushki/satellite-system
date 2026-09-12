@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { computePositions } from '@/core/geometryEngine'
-import { computeRealtimeCoverage } from '@/core/coverageEngine'
+import { getConstellationCoverage } from '@/core/coverageEngine'
 import {
   Globe,
   Radio,
@@ -31,19 +30,19 @@ export const CoverageHUD: React.FC = () => {
     setSelectedStation,
   } = useSimulationStore()
 
-  // Compute realtime coverage metrics at current time
-  const coverageMetrics = useMemo(() => {
-    if (!activeScenario) return null
-    const positions = computePositions(activeScenario, currentTime_s)
-    return computeRealtimeCoverage(activeScenario, positions, coverageElevation)
-  }, [activeScenario, currentTime_s, coverageElevation])
-
   // Get active route for the currently selected client
   const step = simulationResult?.step_s || 120
   const idx = Math.floor(currentTime_s / step)
   const clientData = simulationResult?.clients.find((c) => c.client_id === selectedClientId)
   const currentTimelineItem = clientData?.timeline.find((item) => item.t_s === idx * step)
-  const isRouteConnected = (currentTimelineItem?.path?.length || 0) >= 2
+  const activeRoutePath = currentTimelineItem?.path || []
+  const isRouteConnected = activeRoutePath.length >= 2
+
+  // Compute realtime coverage metrics at current time - synchronized with FleetSidebar
+  const coverageMetrics = useMemo(() => {
+    if (!activeScenario) return null
+    return getConstellationCoverage(activeScenario, currentTime_s, coverageElevation, activeRoutePath)
+  }, [activeScenario, currentTime_s, coverageElevation, activeRoutePath])
 
   if (!coverageMetrics) return null
 
@@ -98,12 +97,12 @@ export const CoverageHUD: React.FC = () => {
           </div>
           <div className="flex items-baseline gap-1 mt-0.5">
             <span className="text-lg font-black text-white font-mono tabular-nums">
-              {coverageMetrics.totalCoveredAreaMkm2}
+              {coverageMetrics.totalCoveredAreaMkm2.toFixed(1)}
             </span>
             <span className="text-[10px] text-zinc-400 font-mono">млн км²</span>
           </div>
           <div className="text-[9.5px] text-zinc-400 font-mono mt-0.5">
-            {coverageMetrics.globalCoveragePct}% Земли
+            {coverageMetrics.globalCoveragePct.toFixed(1)}% Земли
           </div>
         </div>
 
@@ -118,7 +117,7 @@ export const CoverageHUD: React.FC = () => {
                 isArctic100 ? 'text-emerald-400' : 'text-amber-400'
               }`}
             >
-              {coverageMetrics.arcticCoveragePct}%
+              {coverageMetrics.arcticCoveragePct.toFixed(1)}%
             </span>
             {isArctic100 ? (
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
