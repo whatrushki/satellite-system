@@ -515,6 +515,8 @@ export const PolarMapCanvas: React.FC = () => {
     hoveredNode,
     currentSnap,
     activeRoutePath,
+    coverageMode,
+    coverageElevation,
   ])
 
   // Mouse interaction: Hover & Click

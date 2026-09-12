@@ -193,6 +193,14 @@ export const Globe3DView: React.FC = () => {
     coverageModeRef.current = coverageMode
   }, [coverageMode])
 
+  const coverageElevationRef = useRef(coverageElevation)
+  useEffect(() => {
+    coverageElevationRef.current = coverageElevation
+    if (updateRealtimePositionsRef.current) {
+      updateRealtimePositionsRef.current(currentTime_s)
+    }
+  }, [coverageElevation, currentTime_s])
+
   const selectedTargetRef = useRef(selectedTarget)
   const prevTargetRef = useRef(selectedTarget)
   const shouldResetToOverviewRef = useRef(false)
@@ -1312,49 +1320,86 @@ export const Globe3DView: React.FC = () => {
             node.footprintRing25.quaternion.setFromUnitVectors(upVec, radial)
 
             const curMode = coverageModeRef.current
+            const curElev = coverageElevationRef.current ?? 10
+            const isBaseVisible = !(curMode === 'off' || isFailed || (curMode === 'route' && !isInRoute))
 
-            const isVisible = !(curMode === 'off' || isFailed || (curMode === 'route' && !isInRoute))
-            node.footprintCap10.visible = isVisible
-            node.footprintRing10.visible = isVisible
-            node.footprintCap25.visible = isVisible
-            node.footprintRing25.visible = isVisible
-
-            if (isVisible) {
+            if (!isBaseVisible) {
+              node.footprintCap10.visible = false
+              node.footprintRing10.visible = false
+              node.footprintCap25.visible = false
+              node.footprintRing25.visible = false
+            } else {
+              const isElev10 = curElev <= 15
               const capMat10 = node.footprintCap10.material as THREE.MeshBasicMaterial
               const ringMat10 = node.footprintRing10.material as THREE.LineBasicMaterial
               const capMat25 = node.footprintCap25.material as THREE.MeshBasicMaterial
               const ringMat25 = node.footprintRing25.material as THREE.LineBasicMaterial
 
-              if (isInRoute) {
-                capMat10.color.setHex(0x10b981)
-                capMat10.opacity = 0.22
-                ringMat10.color.setHex(0x34d399)
-                ringMat10.opacity = 0.85
+              if (isElev10) {
+                // 10° HORIZON MODE (R = 1665 km) - Big, wide, prominent coverage cap
+                node.footprintCap10.visible = true
+                node.footprintRing10.visible = true
+                node.footprintCap25.visible = true
+                node.footprintRing25.visible = true
 
-                capMat25.color.setHex(0x059669)
-                capMat25.opacity = 0.35
-                ringMat25.color.setHex(0x6ee7b7)
-                ringMat25.opacity = 0.95
-              } else if (isSelected) {
-                capMat10.color.setHex(0x38bdf8)
-                capMat10.opacity = 0.16
-                ringMat10.color.setHex(0x38bdf8)
-                ringMat10.opacity = 0.65
+                if (isInRoute) {
+                  capMat10.color.setHex(0x10b981)
+                  capMat10.opacity = 0.28
+                  ringMat10.color.setHex(0x34d399)
+                  ringMat10.opacity = 0.95
 
-                capMat25.color.setHex(0x0284c7)
-                capMat25.opacity = 0.26
-                ringMat25.color.setHex(0xffffff)
-                ringMat25.opacity = 0.85
+                  capMat25.color.setHex(0x059669)
+                  capMat25.opacity = 0.14
+                  ringMat25.color.setHex(0x6ee7b7)
+                  ringMat25.opacity = 0.50
+                } else if (isSelected) {
+                  capMat10.color.setHex(0x38bdf8)
+                  capMat10.opacity = 0.22
+                  ringMat10.color.setHex(0xffffff)
+                  ringMat10.opacity = 0.85
+
+                  capMat25.color.setHex(0x0284c7)
+                  capMat25.opacity = 0.10
+                  ringMat25.color.setHex(0x38bdf8)
+                  ringMat25.opacity = 0.40
+                } else {
+                  capMat10.color.setHex(0x0284c7)
+                  capMat10.opacity = 0.10
+                  ringMat10.color.setHex(0x0284c7)
+                  ringMat10.opacity = 0.40
+
+                  capMat25.color.setHex(0x0369a1)
+                  capMat25.opacity = 0.04
+                  ringMat25.color.setHex(0x38bdf8)
+                  ringMat25.opacity = 0.18
+                }
               } else {
-                capMat10.color.setHex(0x0284c7)
-                capMat10.opacity = 0.07
-                ringMat10.color.setHex(0x0284c7)
-                ringMat10.opacity = 0.28
+                // 25° CORE SLA MODE (R = 940 km) - Circles visibly shrink to compact core!
+                // 10° cap is hidden, 10° ring is faint guide
+                node.footprintCap10.visible = false
+                node.footprintRing10.visible = true
+                ringMat10.color.setHex(0x52525b)
+                ringMat10.opacity = 0.15
 
-                capMat25.color.setHex(0x0369a1)
-                capMat25.opacity = 0.12
-                ringMat25.color.setHex(0x38bdf8)
-                ringMat25.opacity = 0.45
+                node.footprintCap25.visible = true
+                node.footprintRing25.visible = true
+
+                if (isInRoute) {
+                  capMat25.color.setHex(0x10b981)
+                  capMat25.opacity = 0.38
+                  ringMat25.color.setHex(0x34d399)
+                  ringMat25.opacity = 0.95
+                } else if (isSelected) {
+                  capMat25.color.setHex(0x38bdf8)
+                  capMat25.opacity = 0.30
+                  ringMat25.color.setHex(0xffffff)
+                  ringMat25.opacity = 0.90
+                } else {
+                  capMat25.color.setHex(0x0284c7)
+                  capMat25.opacity = 0.16
+                  ringMat25.color.setHex(0x38bdf8)
+                  ringMat25.opacity = 0.55
+                }
               }
             }
           }
@@ -1552,10 +1597,10 @@ export const Globe3DView: React.FC = () => {
     updateRealtimePositionsRef.current = updateRealtimePositions
   }, [updateRealtimePositions])
 
-  // Trigger continuous position update whenever currentTime_s changes
+  // Trigger continuous position update whenever currentTime_s or coverageElevation changes
   useEffect(() => {
     updateRealtimePositions(currentTime_s)
-  }, [currentTime_s, updateRealtimePositions])
+  }, [currentTime_s, coverageElevation, updateRealtimePositions])
 
   return (
     <div className="relative w-full h-full select-none overflow-hidden bg-[#06080d]">

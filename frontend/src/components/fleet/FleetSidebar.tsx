@@ -17,6 +17,7 @@ export const FleetSidebar: React.FC = () => {
     clearSelection,
     simulationResult,
     selectedClientId,
+    coverageElevation,
   } = useSimulationStore()
 
   const [planeFilter, setPlaneFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL')
@@ -86,10 +87,10 @@ export const FleetSidebar: React.FC = () => {
         y_km: s.y_km,
         z_km: s.z_km,
       })),
-      activeScenario.environment.min_elevation_deg || 10.0,
+      coverageElevation || 10.0,
       activeRoutePath
     )
-  }, [activeScenario, currentSnap, activeRoutePath])
+  }, [activeScenario, currentSnap, coverageElevation, activeRoutePath])
 
   const singleSatAreaMkm2 = coverageMetrics?.singleFootprintAreaMkm2 ?? 8.7
   const singleSatRadiusKm = coverageMetrics?.footprintRadiusKm ?? 1665
