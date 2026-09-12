@@ -1460,7 +1460,18 @@ export const Globe3DView: React.FC = () => {
               if (sPos) routePoints.push(sPos.clone())
             }
           }
-          routeLineRef.current.geometry.setFromPoints(routePoints)
+          const coords: number[] = []
+          for (const p of routePoints) {
+            coords.push(p.x, p.y, p.z)
+          }
+          const existingAttr = routeLineRef.current.geometry.getAttribute('position') as THREE.BufferAttribute
+          if (!existingAttr || existingAttr.count !== routePoints.length) {
+            if (existingAttr) routeLineRef.current.geometry.deleteAttribute('position')
+            routeLineRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(coords, 3))
+          } else {
+            existingAttr.copyArray(coords)
+            existingAttr.needsUpdate = true
+          }
           routeLineRef.current.visible = true
           currentRoutePointsRef.current = routePoints
 
