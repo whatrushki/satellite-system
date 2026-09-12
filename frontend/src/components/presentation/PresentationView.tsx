@@ -2,21 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { PRESENTATION_SLIDES, SlideData } from './slidesData'
 import { SlideMediaBlock } from './SlideMediaBlock'
 import {
-  ChevronLeft,
-  ChevronRight,
   Maximize2,
   Minimize2,
-  Clock,
-  RotateCcw,
-  Sparkles,
-  Layers,
   Award,
-  ArrowRight,
+  Satellite,
+  ChevronRight,
+  ChevronLeft,
+  X,
   Radio,
-  Sliders,
-  ShieldCheck,
-  CheckCircle2,
-  ExternalLink,
 } from 'lucide-react'
 
 export interface PresentationViewProps {
@@ -26,27 +19,6 @@ export interface PresentationViewProps {
 export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isOverviewOpen, setIsOverviewOpen] = useState(false)
-
-  // Presentation Timer (Pitch stopwatch)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const [isTimerRunning, setIsTimerRunning] = useState(true)
-
-  useEffect(() => {
-    let interval: any
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        setElapsedSeconds((s) => s + 1)
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [isTimerRunning])
-
-  const formatTimer = (totalSec: number) => {
-    const mm = String(Math.floor(totalSec / 60)).padStart(2, '0')
-    const ss = String(totalSec % 60).padStart(2, '0')
-    return `${mm}:${ss}`
-  }
 
   const currentSlide: SlideData = PRESENTATION_SLIDES[currentSlideIndex]
   const totalSlides = PRESENTATION_SLIDES.length
@@ -61,7 +33,6 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
 
   const goToSlide = useCallback((index: number) => {
     setCurrentSlideIndex(Math.max(0, Math.min(totalSlides - 1, index)))
-    setIsOverviewOpen(false)
   }, [totalSlides])
 
   const toggleFullscreen = () => {
@@ -74,10 +45,29 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
     }
   }
 
-  // Keyboard navigation handler
+  // Return back to main platform
+  const handleExitToMain = useCallback(() => {
+    if (onExit) {
+      onExit()
+      return
+    }
+    if (window.location.hash.includes('presentation')) {
+      window.location.hash = ''
+    }
+    if (window.location.search.includes('presentation')) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('presentation')
+      window.history.pushState({}, '', url.pathname + (url.search ? url.search : '') + url.hash)
+    }
+    if (window.location.pathname.includes('presentation')) {
+      window.history.pushState({}, '', window.location.pathname.replace(/\/presentation\/?$/, '') || '/')
+    }
+    window.location.href = '/'
+  }, [onExit])
+
+  // Keyboard navigation handler (Arrows, Space, F, Esc, numbers)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if user is typing in an input
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return
 
       switch (e.key) {
@@ -107,20 +97,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
           e.preventDefault()
           toggleFullscreen()
           break
-        case 'o':
-        case 'O':
-        case 'Tab':
-          e.preventDefault()
-          setIsOverviewOpen((prev) => !prev)
-          break
         case 'Escape':
-          if (isOverviewOpen) {
-            e.preventDefault()
-            setIsOverviewOpen(false)
-          }
+          e.preventDefault()
+          handleExitToMain()
           break
         default:
-          // Numeric keys 1..9
           if (e.key >= '1' && e.key <= '9') {
             const num = parseInt(e.key, 10) - 1
             if (num < totalSlides) {
@@ -132,299 +113,230 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ onExit }) =>
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [goToNext, goToPrev, goToSlide, totalSlides, isOverviewOpen])
+  }, [goToNext, goToPrev, goToSlide, totalSlides, handleExitToMain])
 
-  // Return back to main platform
-  const handleExitToMain = () => {
-    if (onExit) {
-      onExit()
-      return
-    }
-    if (window.location.hash.includes('presentation')) {
-      window.location.hash = ''
-    }
-    if (window.location.search.includes('presentation')) {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('presentation')
-      window.history.pushState({}, '', url.pathname + url.search + url.hash)
-    }
-    if (window.location.pathname.includes('presentation')) {
-      window.history.pushState({}, '', window.location.pathname.replace(/\/presentation\/?$/, '') || '/')
-    }
-    window.location.href = '/'
-  }
+  const isTitleSlide = currentSlideIndex === 0
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-[#06080d] text-zinc-100 flex flex-col select-none overflow-hidden font-sans z-50">
-      {/* Background Subtle Tech Grid & Radial Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(56,189,248,0.12),rgba(0,0,0,0))] pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
-
-      {/* Top Progress Bar */}
-      <div className="relative w-full h-1 bg-white/5 shrink-0 z-30">
+    <div className="fixed inset-0 w-screen h-screen bg-[#06080d] text-slate-100 flex flex-col select-none overflow-hidden font-sans z-50">
+      {/* 1. Ultra-thin Top Progress Bar */}
+      <div className="relative w-full h-[2px] bg-white/5 shrink-0 z-30">
         <div
-          className="h-full bg-gradient-to-r from-cyan-500 via-sky-400 to-indigo-500 transition-all duration-300 shadow-[0_0_8px_rgba(56,189,248,0.6)]"
+          className="h-full bg-white/70 transition-all duration-300"
           style={{ width: `${((currentSlideIndex + 1) / totalSlides) * 100}%` }}
         />
       </div>
 
-      {/* Top Control Bar */}
-      <header className="relative z-30 px-6 py-3 border-b border-white/10 flex items-center justify-between bg-black/40 backdrop-blur-md">
-        {/* Left: Project title & current slide indicator */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-xs font-black tracking-widest uppercase font-mono text-white">
-              АРКТИКА-НЕТ // ПРЕЗЕНТАЦИЯ
+      {/* 2. Top Header: Team Branding & Slide Counter (No Button Clutter) */}
+      <header className="relative z-30 px-6 py-3.5 flex items-center justify-between pointer-events-auto">
+        {/* Left: Team Logo Pill in exact platform style */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-[#10131a]/85 backdrop-blur-md border border-white/12 rounded-xl px-3.5 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+            <span className="text-[12px] font-black tracking-[0.2em] text-white uppercase font-sans">
+              COSMO-NET
+            </span>
+            <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest border-l border-white/15 pl-2">
+              2026
             </span>
           </div>
 
-          <div className="h-4 w-px bg-white/10 hidden sm:block" />
-
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-400">
-            <span className="px-2 py-0.5 rounded bg-white/10 text-white font-bold">
-              СЛАЙД {String(currentSlideIndex + 1).padStart(2, '0')} / {String(totalSlides).padStart(2, '0')}
+          {!isTitleSlide && (
+            <span className="hidden sm:inline text-xs font-mono text-zinc-400">
+              {currentSlide.badge}
             </span>
-            <span className="text-zinc-500">•</span>
-            <span className="text-zinc-300 truncate max-w-xs">{currentSlide.category}</span>
+          )}
+        </div>
+
+        {/* Right: Slide Counter + Fullscreen + Close */}
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-1 rounded-xl bg-[#10131a]/85 backdrop-blur-md border border-white/12 text-xs font-mono font-bold text-zinc-300 shadow-sm">
+            <span>{String(currentSlideIndex + 1).padStart(2, '0')}</span>
+            <span className="text-zinc-600 mx-1">/</span>
+            <span className="text-zinc-500">{String(totalSlides).padStart(2, '0')}</span>
           </div>
-        </div>
 
-        {/* Center: Pitch Timer */}
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono">
-          <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-white font-bold">{formatTimer(elapsedSeconds)}</span>
-          <button
-            onClick={() => setIsTimerRunning(!isTimerRunning)}
-            className="text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px]"
-            title={isTimerRunning ? 'Пауза таймера' : 'Возобновить таймер'}
-          >
-            {isTimerRunning ? '⏸' : '▶'}
-          </button>
-          <button
-            onClick={() => setElapsedSeconds(0)}
-            className="text-zinc-500 hover:text-white transition-colors cursor-pointer ml-1"
-            title="Сбросить таймер"
-          >
-            <RotateCcw className="w-2.5 h-2.5" />
-          </button>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2">
-          {/* Slide Overview Toggle */}
-          <button
-            onClick={() => setIsOverviewOpen(!isOverviewOpen)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium border transition-colors flex items-center gap-1.5 cursor-pointer ${
-              isOverviewOpen
-                ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-200'
-                : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white'
-            }`}
-            title="Сетка всех слайдов (Tab / O)"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Все слайды</span>
-          </button>
-
-          {/* Fullscreen Toggle */}
           <button
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 cursor-pointer transition-colors"
-            title={isFullscreen ? 'Выйти из полноэкранного режима (F)' : 'На весь экран (F)'}
+            className="p-1.5 rounded-xl bg-[#10131a]/85 backdrop-blur-md hover:bg-white/10 text-zinc-400 hover:text-white border border-white/12 cursor-pointer transition-colors"
+            title="На весь экран (F)"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Exit to Main App */}
           <button
             onClick={handleExitToMain}
-            className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold font-sans text-white border border-white/20 cursor-pointer transition-colors flex items-center gap-1.5"
-            title="Вернуться на 3D карту системы"
+            className="px-2.5 py-1 rounded-xl bg-[#10131a]/85 backdrop-blur-md hover:bg-white/15 text-zinc-400 hover:text-white border border-white/12 text-xs font-mono cursor-pointer transition-colors flex items-center gap-1.5"
+            title="Вернуться к 3D платформе (Esc)"
           >
             <span>В систему</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <X className="w-3 h-3 text-zinc-500" />
           </button>
         </div>
       </header>
 
-      {/* Main Slide Content Area */}
-      <main className="relative flex-1 w-full h-full overflow-hidden p-6 md:p-10 flex flex-col justify-center z-20">
-        <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between">
-          {/* Slide Header */}
-          <div className="space-y-2 mb-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
-                {currentSlide.badge}
-              </span>
-              {currentSlide.criteriaScore && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <Award className="w-3 h-3" />
-                  <span>{currentSlide.criteriaScore}</span>
-                  {currentSlide.criteriaName && (
-                    <span className="text-zinc-400 font-normal">({currentSlide.criteriaName})</span>
-                  )}
-                </span>
-              )}
-            </div>
-
-            <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight">
-              {currentSlide.title}
-            </h1>
-            <p className="text-sm md:text-base text-zinc-400 leading-relaxed max-w-4xl">
-              {currentSlide.subtitle}
-            </p>
-          </div>
-
-          {/* Two-column Layout: Content Points (Left) & Video/Demo (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
-            {/* Left Column: Feature Points (5 of 12 cols) */}
-            <div className="lg:col-span-5 flex flex-col justify-center gap-3 overflow-y-auto pr-1">
-              {currentSlide.points.map((pt, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-white/20 transition-all space-y-1 shadow-sm group"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs md:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                      <span>{pt.title}</span>
-                    </h3>
-                    {pt.metric && (
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-300 border border-cyan-500/20 shrink-0">
-                        {pt.metric}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] md:text-xs text-zinc-400 leading-relaxed font-sans pl-3.5">
-                    {pt.desc}
-                  </p>
+      {/* 3. Main Slide Area */}
+      <main className="relative flex-1 w-full h-full overflow-hidden px-6 md:px-12 py-4 flex flex-col justify-center z-20">
+        {isTitleSlide ? (
+          /* ==================== TITLE SLIDE WITH TEAM LOGO ==================== */
+          <div className="max-w-7xl w-full mx-auto h-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left: Brand & Pitch Header (7 cols) */}
+            <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
+              {/* Team Logo Badge */}
+              <div className="flex items-center gap-3 bg-[#10131a]/90 backdrop-blur-md border border-white/15 rounded-2xl px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-fit">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                  <Satellite className="w-5 h-5 text-white" />
                 </div>
-              ))}
-            </div>
+                <div>
+                  <div className="text-base font-black tracking-[0.25em] text-white uppercase font-sans">
+                    COSMO-NET
+                  </div>
+                  <div className="text-[10px] font-mono text-zinc-400 tracking-wider uppercase">
+                    Инженерная группа // CosmoHack 2026
+                  </div>
+                </div>
+              </div>
 
-            {/* Right Column: Slide Media Block (7 of 12 cols) */}
-            <div className="lg:col-span-7 h-full flex flex-col min-h-[320px]">
-              <SlideMediaBlock
-                demoType={currentSlide.demoType}
-                videoSrc={currentSlide.videoSrc}
-                title={currentSlide.title}
-              />
-            </div>
-          </div>
+              {/* Title & Subtitle */}
+              <div className="space-y-3">
+                <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-[1.15] font-sans">
+                  {currentSlide.title}
+                </h1>
+                <p className="text-sm md:text-base text-zinc-400 leading-relaxed font-sans max-w-2xl">
+                  {currentSlide.subtitle}
+                </p>
+              </div>
 
-          {/* Bottom Slide Footer: Navigation controls & Hotkeys guide */}
-          <div className="mt-4 pt-3 border-t border-white/10 shrink-0 flex items-center justify-between">
-            {/* Left: Keyboard hotkey hints */}
-            <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono text-zinc-500">
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">←</kbd>
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">→</kbd>
-                <span>Навигация</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">Space</kbd>
-                <span>Вперед</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">F</kbd>
-                <span>Полный экран</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">1..9</kbd>
-                <span>Слайды</span>
-              </span>
-            </div>
-
-            {/* Right: Next / Prev Buttons */}
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-              <button
-                onClick={goToPrev}
-                disabled={currentSlideIndex === 0}
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-mono font-bold text-white border border-white/10 flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Назад</span>
-              </button>
-
-              {/* Slide indicators dots */}
-              <div className="flex items-center gap-1.5 px-2">
-                {PRESENTATION_SLIDES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goToSlide(i)}
-                    className={`transition-all rounded-full cursor-pointer ${
-                      i === currentSlideIndex
-                        ? 'w-6 h-2 bg-cyan-400'
-                        : 'w-2 h-2 bg-white/20 hover:bg-white/40'
-                    }`}
-                    title={`Перейти к слайду ${i + 1}`}
-                  />
+              {/* 4 Core Pillars Grid */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {currentSlide.points.map((pt, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-xl bg-[#10131a]/85 backdrop-blur-md border border-white/10 space-y-1 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-white">{pt.title}</span>
+                      {pt.metric && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-zinc-200 border border-white/10 shrink-0">
+                          {pt.metric}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">{pt.desc}</p>
+                  </div>
                 ))}
               </div>
 
-              <button
-                onClick={goToNext}
-                disabled={currentSlideIndex === totalSlides - 1}
-                className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-mono font-bold text-white border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer transition-colors shadow-[0_0_16px_rgba(6,182,212,0.3)]"
-              >
-                <span>Далее</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {/* Action hint */}
+              <div className="pt-2 flex items-center gap-2 text-xs font-mono text-zinc-500">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Используйте клавиши [→] или [Пробел] для перехода к слайдам</span>
+              </div>
+            </div>
+
+            {/* Right: Intro Video Block (5 cols) */}
+            <div className="lg:col-span-5 h-[420px] flex flex-col justify-center">
+              <SlideMediaBlock
+                videoSrc={currentSlide.videoSrc}
+                title={currentSlide.title}
+                category={currentSlide.category}
+              />
             </div>
           </div>
-        </div>
+        ) : (
+          /* ==================== CONTENT SLIDES (2 TO 12) ==================== */
+          <div className="max-w-7xl w-full mx-auto h-full flex flex-col justify-between py-2">
+            {/* Header: Badge + Title */}
+            <div className="space-y-1.5 shrink-0 mb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/10 text-zinc-200 border border-white/15">
+                  {currentSlide.badge}
+                </span>
+                {currentSlide.criteriaScore && (
+                  <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider bg-white/5 text-zinc-300 border border-white/10 flex items-center gap-1.5">
+                    <Award className="w-3 h-3 text-emerald-400" />
+                    <span className="text-emerald-300 font-bold">{currentSlide.criteriaScore}</span>
+                    {currentSlide.criteriaName && (
+                      <span className="text-zinc-400 font-normal">({currentSlide.criteriaName})</span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-tight font-sans">
+                {currentSlide.title}
+              </h2>
+              <p className="text-xs md:text-sm text-zinc-400 leading-relaxed font-sans max-w-4xl">
+                {currentSlide.subtitle}
+              </p>
+            </div>
+
+            {/* Two-column layout: Points (5 cols) & Video Block (7 cols) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-0">
+              {/* Left Column: Points list */}
+              <div className="lg:col-span-5 flex flex-col justify-center gap-2.5 overflow-y-auto pr-1">
+                {currentSlide.points.map((pt, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-xl bg-[#10131a]/85 backdrop-blur-md border border-white/10 hover:border-white/20 transition-colors space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-xs md:text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                        <span>{pt.title}</span>
+                      </h3>
+                      {pt.metric && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-zinc-200 border border-white/10 shrink-0">
+                          {pt.metric}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] md:text-xs text-zinc-400 leading-relaxed font-sans pl-3.5">
+                      {pt.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Right Column: Video Media Block */}
+              <div className="lg:col-span-7 h-full flex flex-col min-h-[340px]">
+                <SlideMediaBlock
+                  videoSrc={currentSlide.videoSrc}
+                  title={currentSlide.title}
+                  category={currentSlide.category}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Slide Overview Drawer (Modal overlay) */}
-      {isOverviewOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col p-8 overflow-y-auto"
-          onClick={() => setIsOverviewOpen(false)}
-        >
-          <div
-            className="max-w-6xl w-full mx-auto space-y-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <h2 className="text-lg font-black text-white uppercase tracking-wider font-mono">
-                  СОДЕРЖАНИЕ ПРЕЗЕНТАЦИИ (12 СЛАЙДОВ)
-                </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Выберите слайд для быстрого перехода или нажмите Esc
-                </p>
-              </div>
-              <button
-                onClick={() => setIsOverviewOpen(false)}
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-white cursor-pointer"
-              >
-                Закрыть [Esc]
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {PRESENTATION_SLIDES.map((s, idx) => (
-                <div
-                  key={s.id}
-                  onClick={() => goToSlide(idx)}
-                  className={`p-4 rounded-xl border text-left cursor-pointer transition-all space-y-2 ${
-                    idx === currentSlideIndex
-                      ? 'bg-cyan-950/50 border-cyan-400 shadow-[0_0_16px_rgba(6,182,212,0.3)]'
-                      : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/10'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
-                    <span className="font-bold text-white">#{String(idx + 1).padStart(2, '0')}</span>
-                    <span className="text-cyan-300 font-bold">{s.badge}</span>
-                  </div>
-                  <h3 className="text-xs font-bold text-white line-clamp-2">{s.title}</h3>
-                  <p className="text-[10px] text-zinc-400 line-clamp-2">{s.subtitle}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* 4. Minimalist Bottom Bar: Subtle Key Navigation Hints */}
+      <footer className="relative z-30 px-6 py-2.5 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-zinc-500 bg-[#06080d]/80 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono">←</kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono">→</kbd>
+            <span className="text-zinc-400 ml-1">Листать слайды</span>
+          </span>
+          <span className="text-zinc-700">•</span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono">Space</kbd>
+            <span className="text-zinc-400 ml-1">Вперед</span>
+          </span>
         </div>
-      )}
+
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono">F</kbd>
+            <span className="text-zinc-400 ml-1">На весь экран</span>
+          </span>
+          <span className="text-zinc-700">•</span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono">Esc</kbd>
+            <span className="text-zinc-400 ml-1">Выход</span>
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }
