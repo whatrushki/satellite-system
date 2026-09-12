@@ -18,7 +18,9 @@ import {
   Activity,
   Layers,
 } from 'lucide-react'
-import { groundPosition } from '@/core/geometryEngine'
+import { groundPosition, computeSnapshot } from '@/core/geometryEngine'
+import { findRoute } from '@/core/router'
+import { classifyFailureReason } from '@/core/diagnostics'
 
 export const SpaceXTelemetryPanel: React.FC = () => {
   const {
@@ -42,29 +44,61 @@ export const SpaceXTelemetryPanel: React.FC = () => {
     restoreGatewayNow,
   } = useScenarioStore()
 
-  const step = simulationResult?.step_s || 120
-  const idx = Math.floor(currentTime_s / step)
-  const currentSnap = useMemo(() => {
-    if (!simulationResult?.snapshots || simulationResult.snapshots.length === 0) return null
-    return simulationResult.snapshots[Math.min(idx, simulationResult.snapshots.length - 1)]
-  }, [simulationResult, idx])
+  // Real-time snapshot computed continuously for currentTime_s
+  const liveSnap = useMemo(() => {
+    if (!activeScenario) return null
+    return computeSnapshot(activeScenario, currentTime_s)
+  }, [activeScenario, currentTime_s])
 
-  // Client path & status
-  const clientData = useMemo(() => {
-    return simulationResult?.clients.find((c) => c.client_id === selectedClientId)
-  }, [simulationResult, selectedClientId])
+  const liveGateways = useMemo(() => {
+    const s = new Set<string>()
+    if (!activeScenario) return s
+    for (const g of activeScenario.ground_sites) {
+      if (g.role === 'gateway') {
+        const isOffline = (activeScenario.gateway_outages || []).some(
+          (f) => f.gateway_id === g.id && f.start_s <= currentTime_s && currentTime_s < f.end_s
+        )
+        if (!isOffline) s.add(g.id)
+      }
+    }
+    return s
+  }, [activeScenario, currentTime_s])
 
-  const currentTimeline = useMemo(() => {
-    return clientData?.timeline.find((t) => t.t_s === idx * step)
-  }, [clientData, idx, step])
+  const liveActiveSatIds = useMemo(() => {
+    const s = new Set<string>()
+    if (!liveSnap) return s
+    for (const sat of liveSnap.satellites) {
+      if (sat.active) s.add(sat.id)
+    }
+    return s
+  }, [liveSnap])
 
-  const isConnected = currentTimeline?.status === 'connected'
+  const liveRoute = useMemo(() => {
+    if (!activeScenario || !liveSnap || !selectedClientId) return null
+    return findRoute(liveSnap, activeScenario, selectedClientId, liveGateways)
+  }, [activeScenario, liveSnap, selectedClientId, liveGateways])
+
+  const isConnected = !!liveRoute && liveRoute.path.length >= 2
+
+  const liveFailureReason = useMemo(() => {
+    if (isConnected || !activeScenario || !liveSnap || !selectedClientId) return null
+    const allGateways = new Set(
+      activeScenario.ground_sites.filter((g) => g.role === 'gateway').map((g) => g.id)
+    )
+    return classifyFailureReason(
+      activeScenario,
+      liveSnap,
+      selectedClientId,
+      allGateways,
+      liveActiveSatIds
+    )
+  }, [isConnected, activeScenario, liveSnap, selectedClientId, liveActiveSatIds])
 
   // Selected Satellite
   const satId = selectedSatelliteId || 'S01'
   const satObj = useMemo(() => {
-    return currentSnap?.satellites.find((s) => s.id === satId)
-  }, [currentSnap, satId])
+    return liveSnap?.satellites.find((s) => s.id === satId)
+  }, [liveSnap, satId])
 
   const isSatFailed = satObj ? !satObj.active : false
 
@@ -80,23 +114,23 @@ export const SpaceXTelemetryPanel: React.FC = () => {
 
   // Elevation to selected client
   const clientElevation = useMemo(() => {
-    if (!currentSnap || !selectedClientId) return null
-    const elevMap = currentSnap.elevation_deg[selectedClientId] || {}
+    if (!liveSnap || !selectedClientId) return null
+    const elevMap = liveSnap.elevation_deg[selectedClientId] || {}
     return elevMap[satId] ?? null
-  }, [currentSnap, selectedClientId, satId])
+  }, [liveSnap, selectedClientId, satId])
 
   // Elevation to gateway
   const gatewayElevation = useMemo(() => {
-    if (!currentSnap || !gatewaySite) return null
-    const elevMap = currentSnap.elevation_deg[gatewaySite.id] || {}
+    if (!liveSnap || !gatewaySite) return null
+    const elevMap = liveSnap.elevation_deg[gatewaySite.id] || {}
     return elevMap[satId] ?? null
-  }, [currentSnap, gatewaySite, satId])
+  }, [liveSnap, gatewaySite, satId])
 
   // Active ISL connections for this satellite
   const activeISLs = useMemo(() => {
-    if (!currentSnap) return []
+    if (!liveSnap) return []
     const links: Array<{ peerId: string; distanceKm: number }> = []
-    for (const [u, v, dist] of currentSnap.edges) {
+    for (const [u, v, dist] of liveSnap.edges) {
       if (u === satId && !u.startsWith('C') && !u.startsWith('G') && !v.startsWith('C') && !v.startsWith('G')) {
         links.push({ peerId: v, distanceKm: Math.round(dist) })
       } else if (v === satId && !u.startsWith('C') && !u.startsWith('G') && !v.startsWith('C') && !v.startsWith('G')) {
@@ -104,7 +138,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
       }
     }
     return links
-  }, [currentSnap, satId])
+  }, [liveSnap, satId])
 
   // Sub-satellite Nadir point (lat/lon)
   const nadirCoords = useMemo(() => {
@@ -117,13 +151,13 @@ export const SpaceXTelemetryPanel: React.FC = () => {
 
   // Check role in current route
   const routeRole = useMemo(() => {
-    if (!isConnected || !currentTimeline?.path) return 'STANDBY'
-    const path = currentTimeline.path
+    if (!isConnected || !liveRoute?.path) return 'STANDBY'
+    const path = liveRoute.path
     if (!path.includes(satId)) return 'STANDBY'
     if (path[1] === satId) return 'CLIENT_ACCESS'
     if (path[path.length - 2] === satId) return 'GATEWAY_LINK'
     return 'TRANSIT_RELAY'
-  }, [isConnected, currentTimeline, satId])
+  }, [isConnected, liveRoute, satId])
 
   const satFailure = useMemo(() => {
     return (activeScenario?.failures || []).find(
@@ -167,11 +201,11 @@ export const SpaceXTelemetryPanel: React.FC = () => {
   }, [groundSite, isGateway, activeScenario, currentTime_s])
 
   const groundElevations = useMemo(() => {
-    if (!groundSite || !currentSnap) return []
-    const elevMap = currentSnap.elevation_deg[groundSite.id] || {}
+    if (!groundSite || !liveSnap) return []
+    const elevMap = liveSnap.elevation_deg[groundSite.id] || {}
     const list: Array<{ id: string; plane: string; elev: number; active: boolean }> = []
     for (const [sid, el] of Object.entries(elevMap)) {
-      const sat = currentSnap.satellites.find((s) => s.id === sid)
+      const sat = liveSnap.satellites.find((s) => s.id === sid)
       if (el >= (activeScenario?.environment.min_elevation_deg || 10)) {
         list.push({
           id: sid,
@@ -182,7 +216,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
       }
     }
     return list.sort((a, b) => b.elev - a.elev)
-  }, [groundSite, currentSnap, activeScenario])
+  }, [groundSite, liveSnap, activeScenario])
 
   const handleToggleGatewaySim = () => {
     if (!groundSite) return
@@ -279,7 +313,9 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                         : 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
                       : isConnected
                       ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
-                      : 'bg-amber-950/50 text-amber-300 border-amber-500/40'
+                      : groundElevations.some((e) => e.active)
+                      ? 'bg-amber-950/50 text-amber-300 border-amber-500/40'
+                      : 'bg-rose-950/50 text-rose-300 border-rose-500/40'
                   }`}
                 >
                   {isGateway
@@ -288,7 +324,9 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                       : '● В эфире'
                     : isConnected
                     ? '● Маршрут OK'
-                    : '● Разрыв связи'}
+                    : groundElevations.some((e) => e.active)
+                    ? '● Разрыв МИС'
+                    : '● Вне зоны КА'}
                 </span>
               </div>
 
@@ -338,17 +376,15 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                     <span className="text-zinc-400 font-sans">Шлюз назначения:</span>
                     <b className="text-white font-mono">
-                      {currentTimeline?.path ? currentTimeline.path[currentTimeline.path.length - 1] : '—'}
+                      {liveRoute?.path ? liveRoute.path[liveRoute.path.length - 1] : '—'}
                     </b>
                   </div>
                   <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                     <span className="text-zinc-400 font-sans">Длина пути / Задержка:</span>
                     <b className="text-white font-mono">
-                      {currentTimeline?.distance_km || 0} км (
-                      {currentTimeline?.distance_km
-                        ? ((currentTimeline.distance_km / 299.792) * 2).toFixed(1)
-                        : 0}{' '}
-                      мс)
+                      {liveRoute
+                        ? `${Math.round(liveRoute.distance_km)} км (${liveRoute.latency_ms.toFixed(1)} мс)`
+                        : 'Маршрут прерван'}
                     </b>
                   </div>
                 </div>
@@ -379,9 +415,16 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white">{item.id}</span>
                         <span className="text-[9px] text-zinc-400 font-sans">({item.plane})</span>
+                        {!item.active && (
+                          <span className="text-[8px] px-1 py-0.2 bg-rose-950/60 border border-rose-500/40 text-rose-300 rounded font-sans">
+                            ОТКАЗ
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-bold">{item.elev}°</span>
+                        <span className={item.active ? 'text-emerald-400 font-bold' : 'text-rose-400/80 font-bold line-through'}>
+                          {item.elev}°
+                        </span>
                         <ArrowRight className="w-3 h-3 text-zinc-500" />
                       </div>
                     </div>
@@ -575,15 +618,15 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                   : 'bg-rose-950/60 text-rose-200 border-rose-500/40'
               }`}
             >
-              {isConnected ? `${currentTimeline?.hops} ХОПА` : 'НЕТ ПУТИ'}
+              {isConnected && liveRoute ? `${liveRoute.hops} ХОПА` : 'НЕТ ПУТИ'}
             </span>
           </div>
 
-          {isConnected && currentTimeline?.path ? (
+          {isConnected && liveRoute?.path ? (
             <>
               {/* Hop chain */}
               <div className="flex items-center flex-wrap gap-1 bg-black/60 p-2 rounded-xl border border-white/5 text-[11px] font-mono">
-                {currentTimeline.path.map((node, i) => (
+                {liveRoute.path.map((node, i) => (
                   <React.Fragment key={i}>
                     <button
                       onClick={() => {
@@ -601,7 +644,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                     >
                       {node}
                     </button>
-                    {i < currentTimeline.path.length - 1 && (
+                    {i < liveRoute.path.length - 1 && (
                       <ArrowRight className="w-3 h-3 text-zinc-600 shrink-0" />
                     )}
                   </React.Fragment>
@@ -611,12 +654,12 @@ export const SpaceXTelemetryPanel: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
                 <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                   <span>Длина пути:</span>
-                  <b className="text-white font-mono">{currentTimeline.distance_km} км</b>
+                  <b className="text-white font-mono">{Math.round(liveRoute.distance_km)} км</b>
                 </div>
                 <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                   <span>Задержка (RTT):</span>
                   <b className="text-white font-mono">
-                    {((currentTimeline.distance_km / 299.792) * 2).toFixed(1)} мс
+                    {liveRoute.latency_ms.toFixed(1)} мс
                   </b>
                 </div>
               </div>
@@ -629,15 +672,15 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                 <span>Причина отсутствия маршрута:</span>
               </div>
               <p className="text-[11px] text-zinc-300 leading-relaxed">
-                {currentTimeline?.reason === 'NO_VISIBLE_SATELLITE' &&
-                  'Нет активных спутников в зоне радиовидимости терминала (угол возвышения < 10°).'}
-                {currentTimeline?.reason === 'ISL_MESH_PARTITION' &&
-                  'Спутник виден над терминалом и над шлюзом, но межспутниковая сеть (ISL) фрагментирована.'}
-                {currentTimeline?.reason === 'GATEWAY_NO_SATELLITE' &&
+                {liveFailureReason === 'NO_VISIBLE_SATELLITE' &&
+                  'Нет активных спутников в зоне радиовидимости терминала (все КА ниже 10° над горизонтом).'}
+                {liveFailureReason === 'ISL_MESH_PARTITION' &&
+                  'Спутник виден над терминалом и над шлюзом, но межспутниковая сеть (ISL) фрагментирована из-за отказавших узлов.'}
+                {liveFailureReason === 'GATEWAY_NO_SATELLITE' &&
                   'В зоне радиовидимости наземного шлюза Мурманск отсутствуют активные космические аппараты.'}
-                {currentTimeline?.reason === 'GATEWAY_OUTAGE' &&
+                {liveFailureReason === 'GATEWAY_OUTAGE' &&
                   'Опорный шлюз Мурманск недоступен из-за заданного регламентного отказа наземного узла.'}
-                {(!currentTimeline?.reason || currentTimeline.reason === 'NONE') &&
+                {(!liveFailureReason || liveFailureReason === 'NONE') &&
                   'Разрыв сквозного маршрута доставки данных.'}
               </p>
             </div>

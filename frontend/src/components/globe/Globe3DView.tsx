@@ -251,6 +251,9 @@ export const Globe3DView: React.FC = () => {
     badgeOffline?: THREE.Sprite
     badgeReceiving?: THREE.Sprite
     badgeOnline?: THREE.Sprite
+    badgeClientConnected?: THREE.Sprite
+    badgeClientPartition?: THREE.Sprite
+    badgeClientNoVis?: THREE.Sprite
     isGateway?: boolean
   }>>(new Map())
   const updateRealtimePositionsRef = useRef<((t: number) => void) | null>(null)
@@ -883,6 +886,9 @@ export const Globe3DView: React.FC = () => {
       let badgeOffline: THREE.Sprite | undefined
       let badgeReceiving: THREE.Sprite | undefined
       let badgeOnline: THREE.Sprite | undefined
+      let badgeClientConnected: THREE.Sprite | undefined
+      let badgeClientPartition: THREE.Sprite | undefined
+      let badgeClientNoVis: THREE.Sprite | undefined
 
       if (g.role === 'gateway') {
         // Normal gateway label
@@ -928,13 +934,21 @@ export const Globe3DView: React.FC = () => {
         groundLabel.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
         satGroup.add(groundLabel)
 
-        if (isSelected) {
-          const statusText = isConnected ? '● СВЯЗЬ: АКТИВНА' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ КА'
-          const statusColor = isConnected ? '#10b981' : hasSatVis ? '#f59e0b' : '#ef4444'
-          const statusBadge = createTextSprite(`[${statusText}]`, statusColor, 0.85, 0.19)
-          statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
-          satGroup.add(statusBadge)
-        }
+        // Dynamic badges for client connection state
+        badgeClientConnected = createTextSprite('[● СВЯЗЬ: АКТИВНА]', '#10b981', 0.85, 0.19)
+        badgeClientConnected.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        badgeClientConnected.visible = false
+        satGroup.add(badgeClientConnected)
+
+        badgeClientPartition = createTextSprite('[● РАЗРЫВ МИС]', '#f59e0b', 0.85, 0.19)
+        badgeClientPartition.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        badgeClientPartition.visible = false
+        satGroup.add(badgeClientPartition)
+
+        badgeClientNoVis = createTextSprite('[● ВНЕ ЗОНЫ КА]', '#ef4444', 0.85, 0.19)
+        badgeClientNoVis.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        badgeClientNoVis.visible = false
+        satGroup.add(badgeClientNoVis)
       }
 
       groundNodesMapRef.current.set(g.id, {
@@ -946,6 +960,9 @@ export const Globe3DView: React.FC = () => {
         badgeOffline,
         badgeReceiving,
         badgeOnline,
+        badgeClientConnected,
+        badgeClientPartition,
+        badgeClientNoVis,
         isGateway: g.role === 'gateway',
       })
     }
@@ -1312,13 +1329,7 @@ export const Globe3DView: React.FC = () => {
 
       satPosMapRef.current = satPosMap
 
-      // Dynamically update ground sites status and colors in real-time
-      const clientElevations = (selectedClientId && liveSnap.elevation_deg[selectedClientId]) || {}
-      const hasSatVis = Object.entries(clientElevations).some(([sid, el]) => {
-        const s = positions.find((sat) => sat.id === sid)
-        return s?.active && el >= (activeScenario.environment.min_elevation_deg ?? 10.0)
-      })
-
+      // Dynamically update ground sites status, colors, and floating badges in real-time
       for (const g of activeScenario.ground_sites) {
         const gNode = groundNodesMapRef.current.get(g.id)
         if (!gNode) continue
@@ -1336,13 +1347,19 @@ export const Globe3DView: React.FC = () => {
             ? selectedTargetRef.current.id === g.id
             : isClient && g.id === selectedClientId
 
+        const siteElevations = liveSnap.elevation_deg[g.id] || {}
+        const siteHasSatVis = Object.entries(siteElevations).some(([sid, el]) => {
+          const s = positions.find((sat) => sat.id === sid)
+          return s?.active && el >= (activeScenario.environment.min_elevation_deg ?? 10.0)
+        })
+
         const statusColorHex = isOffline
           ? 0xef4444
           : isClient
           ? isSelected
             ? isRouteActive
               ? 0x10b981
-              : hasSatVis
+              : siteHasSatVis
               ? 0xf59e0b
               : 0xef4444
             : 0xa1a1aa
@@ -1377,6 +1394,27 @@ export const Globe3DView: React.FC = () => {
             if (gNode.badgeOnline) gNode.badgeOnline.visible = true
             if (gNode.labelOffline) gNode.labelOffline.visible = false
             if (gNode.labelNormal) gNode.labelNormal.visible = true
+          }
+        } else {
+          // Dynamically synchronize client floating status badge sprites
+          if (isSelected) {
+            if (isRouteActive) {
+              if (gNode.badgeClientConnected) gNode.badgeClientConnected.visible = true
+              if (gNode.badgeClientPartition) gNode.badgeClientPartition.visible = false
+              if (gNode.badgeClientNoVis) gNode.badgeClientNoVis.visible = false
+            } else if (siteHasSatVis) {
+              if (gNode.badgeClientConnected) gNode.badgeClientConnected.visible = false
+              if (gNode.badgeClientPartition) gNode.badgeClientPartition.visible = true
+              if (gNode.badgeClientNoVis) gNode.badgeClientNoVis.visible = false
+            } else {
+              if (gNode.badgeClientConnected) gNode.badgeClientConnected.visible = false
+              if (gNode.badgeClientPartition) gNode.badgeClientPartition.visible = false
+              if (gNode.badgeClientNoVis) gNode.badgeClientNoVis.visible = true
+            }
+          } else {
+            if (gNode.badgeClientConnected) gNode.badgeClientConnected.visible = false
+            if (gNode.badgeClientPartition) gNode.badgeClientPartition.visible = false
+            if (gNode.badgeClientNoVis) gNode.badgeClientNoVis.visible = false
           }
         }
       }
