@@ -5,7 +5,9 @@ import { AppHeader } from '@/components/header/AppHeader'
 import { MapContainer } from '@/components/map/MapContainer'
 import { FleetSidebar } from '@/components/fleet/FleetSidebar'
 import { SpaceXTelemetryPanel } from '@/components/telemetry/SpaceXTelemetryPanel'
+import { TimelineDock } from '@/components/timeline/TimelineDock'
 import { ComparisonView } from '@/components/comparison/ComparisonView'
+import { RecommendationsView } from '@/components/recommendations/RecommendationsView'
 import { ExportDialog } from '@/components/export/ExportDialog'
 import { ImportDialog } from '@/components/export/ImportDialog'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
@@ -39,7 +41,7 @@ export const App: React.FC = () => {
 
       {activeTab === 'dashboard' ? (
         <>
-          {/* 2. Floating Top Navigation (Framed buttons in weightlessness) */}
+          {/* 2. Floating Top Navigation (Header with Stage Switcher, Reset, Scenarios) */}
           <ErrorBoundary fallbackTitle="Навигация">
             <AppHeader
               onOpenImport={() => setIsImportOpen(true)}
@@ -47,21 +49,28 @@ export const App: React.FC = () => {
             />
           </ErrorBoundary>
 
-          {/* 3. Floating Left Sidebar: Satellite Fleet in weightlessness */}
-          <div className="absolute left-4 top-16 bottom-6 w-[280px] z-20 pointer-events-auto">
+          {/* 3. Floating Left Sidebar: Satellite Fleet */}
+          <div className="absolute left-4 top-16 bottom-44 w-[280px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Флот аппаратов">
               <FleetSidebar />
             </ErrorBoundary>
           </div>
 
-          {/* 4. Floating Right Sidebar: Telemetry in weightlessness */}
-          <div className="absolute right-4 top-16 bottom-6 w-[300px] z-20 pointer-events-auto">
+          {/* 4. Floating Right Sidebar: Telemetry */}
+          <div className="absolute right-4 top-16 bottom-44 w-[300px] z-20 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Телеметрия">
               <SpaceXTelemetryPanel />
             </ErrorBoundary>
           </div>
+
+          {/* 5. Floating Bottom Center: Timeline Dock with 3-Lane Availability Gantt Chart */}
+          <div className="absolute left-4 right-4 bottom-3 z-30 pointer-events-auto max-w-7xl mx-auto">
+            <ErrorBoundary fallbackTitle="Временная шкала и диаграмма доступности">
+              <TimelineDock />
+            </ErrorBoundary>
+          </div>
         </>
-      ) : (
+      ) : activeTab === 'compare' ? (
         <div className="absolute inset-0 z-40 bg-[#06080d]/90 backdrop-blur-xl p-4 overflow-auto">
           <div className="max-w-7xl mx-auto h-full flex flex-col">
             <div className="flex justify-between items-center mb-3">
@@ -78,6 +87,27 @@ export const App: React.FC = () => {
             <div className="flex-1 overflow-hidden">
               <ErrorBoundary fallbackTitle="Модуль сравнения">
                 <ComparisonView />
+              </ErrorBoundary>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="absolute inset-0 z-40 bg-[#06080d]/90 backdrop-blur-xl p-4 overflow-auto">
+          <div className="max-w-7xl mx-auto h-full flex flex-col">
+            <div className="flex justify-between items-center mb-3">
+              <h1 className="text-sm font-black tracking-widest text-white uppercase font-sans">
+                Инженерные рекомендации и обоснование
+              </h1>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-bold text-zinc-100 hover:text-white rounded-xl border border-white/20 cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+              >
+                Вернуться к 3D обзору
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ErrorBoundary fallbackTitle="Рекомендации">
+                <RecommendationsView />
               </ErrorBoundary>
             </div>
           </div>

@@ -100,7 +100,7 @@ const PairedAvailabilityChart: React.FC<{
   clientsA: SimulationResult['clients']
   clientsB?: SimulationResult['clients']
   targetThreshold?: number
-}> = ({ clientsA, clientsB, targetThreshold = 80 }) => {
+}> = ({ clientsA, clientsB, targetThreshold = 90 }) => {
   const categories = useMemo(() => {
     const items = clientsA.map((cA) => {
       const cB = clientsB?.find((c) => c.client_id === cA.client_id)
@@ -864,7 +864,11 @@ export const ComparisonView: React.FC = () => {
         <PairedAvailabilityChart
           clientsA={simResultA.clients}
           clientsB={simResultB?.clients}
-          targetThreshold={80}
+          targetThreshold={
+            activeScenario?.environment.target_availability
+              ? Math.round(activeScenario.environment.target_availability * 100)
+              : 90
+          }
         />
 
         {/* Chart 2: Hourly Continuous 24h Line & Area Chart (F2/F3 Hairline Area) */}

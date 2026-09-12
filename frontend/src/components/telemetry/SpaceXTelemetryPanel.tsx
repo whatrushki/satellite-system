@@ -1,44 +1,19 @@
-import React, { useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { AlertTriangle, ArrowRight, Sun, Moon } from 'lucide-react'
 import {
-  computeSatelliteThermalPower,
-  computeLinkBudget,
-  computeHistoricalSignalBars,
-} from '@/core/telemetryEngine'
+  AlertTriangle,
+  ArrowRight,
+  Radio,
+  Network,
+  ZapOff,
+  CheckCircle2,
+  XCircle,
+  Compass,
+} from 'lucide-react'
 import { groundPosition } from '@/core/geometryEngine'
 
-// Satellite codenames mapping
-const CODENAMES: Record<string, string> = {
-  S01: 'Aurora-1',
-  S02: 'Aurora-2',
-  S03: 'Aurora-3',
-  S04: 'Aurora-4',
-  S05: 'Aurora-5',
-  S06: 'Aurora-6',
-  S07: 'Aurora-7',
-  S08: 'Aurora-8',
-  S09: 'Meridian-1',
-  S10: 'Meridian-2',
-  S11: 'Meridian-3',
-  S12: 'Meridian-4',
-  S13: 'Zenith-X',
-  S14: 'Zenith-1',
-  S15: 'Zenith-2',
-  S16: 'Zenith-3',
-  S17: 'Helios-A',
-  S18: 'Helios-B',
-  S19: 'Helios-R',
-  S20: 'Vector-1',
-  S21: 'Vector-2',
-  S22: 'Vector-3',
-  S23: 'Polaris-1',
-  S24: 'Polaris-2',
-}
-
 export const SpaceXTelemetryPanel: React.FC = () => {
-  // 1. TOP LEVEL HOOKS (React 19 Rule)
   const {
     currentTime_s,
     selectedClientId,
@@ -50,9 +25,6 @@ export const SpaceXTelemetryPanel: React.FC = () => {
 
   const { activeScenario, killSatelliteNow } = useScenarioStore()
 
-  const [alertDismissed, setAlertDismissed] = useState(false)
-
-  // Derived calculations (ALL AT TOP LEVEL)
   const step = simulationResult?.step_s || 120
   const idx = Math.floor(currentTime_s / step)
   const currentSnap = useMemo(() => {
@@ -77,75 +49,80 @@ export const SpaceXTelemetryPanel: React.FC = () => {
     return currentSnap?.satellites.find((s) => s.id === satId)
   }, [currentSnap, satId])
 
-  const satName = CODENAMES[satId] || `КА ${satId}`
   const isSatFailed = satObj ? !satObj.active : false
 
-  // Real Thermal & Electrical Power Telemetry
-  const thermalPower = useMemo(() => {
-    if (!satObj || !activeScenario) return null
-    return computeSatelliteThermalPower(satObj, activeScenario, currentTime_s)
-  }, [satObj, activeScenario, currentTime_s])
-
-  // Real Ground Client Site Position & Link Budget
+  // Selected client site
   const clientSite = useMemo(() => {
     return activeScenario?.ground_sites.find((g) => g.id === selectedClientId) || null
   }, [activeScenario, selectedClientId])
 
-  const linkBudget = useMemo(() => {
-    if (!satObj || !clientSite || !activeScenario) return null
-    const gPos = groundPosition(clientSite.lat_deg, clientSite.lon_deg)
-    return computeLinkBudget(
-      satObj,
-      gPos,
-      24.5,
-      satObj.active,
-      activeScenario.environment.min_elevation_deg
-    )
-  }, [satObj, clientSite, activeScenario])
+  // Murmansk gateway
+  const gatewaySite = useMemo(() => {
+    return activeScenario?.ground_sites.find((g) => g.role === 'gateway') || null
+  }, [activeScenario])
 
-  // Real 30-bar historical signal array based on orbital geometry over past 30 min
-  const barHeights = useMemo(() => {
-    if (!activeScenario) return Array(30).fill(0)
-    return computeHistoricalSignalBars(satId, selectedClientId, activeScenario, currentTime_s)
-  }, [satId, selectedClientId, activeScenario, currentTime_s])
+  // Elevation to selected client
+  const clientElevation = useMemo(() => {
+    if (!currentSnap || !selectedClientId) return null
+    const elevMap = currentSnap.elevation_deg[selectedClientId] || {}
+    return elevMap[satId] ?? null
+  }, [currentSnap, selectedClientId, satId])
 
-  // Emergency Dijkstra failure response trigger
-  const handleRespondAnomaly = () => {
+  // Elevation to gateway
+  const gatewayElevation = useMemo(() => {
+    if (!currentSnap || !gatewaySite) return null
+    const elevMap = currentSnap.elevation_deg[gatewaySite.id] || {}
+    return elevMap[satId] ?? null
+  }, [currentSnap, gatewaySite, satId])
+
+  // Active ISL connections for this satellite
+  const activeISLs = useMemo(() => {
+    if (!currentSnap) return []
+    const links: Array<{ peerId: string; distanceKm: number }> = []
+    for (const [u, v, dist] of currentSnap.edges) {
+      if (u === satId && !u.startsWith('C') && !u.startsWith('G') && !v.startsWith('C') && !v.startsWith('G')) {
+        links.push({ peerId: v, distanceKm: Math.round(dist) })
+      } else if (v === satId && !u.startsWith('C') && !u.startsWith('G') && !v.startsWith('C') && !v.startsWith('G')) {
+        links.push({ peerId: u, distanceKm: Math.round(dist) })
+      }
+    }
+    return links
+  }, [currentSnap, satId])
+
+  // Sub-satellite Nadir point (lat/lon)
+  const nadirCoords = useMemo(() => {
+    if (!satObj) return null
+    const r = Math.hypot(satObj.x_km, satObj.y_km, satObj.z_km)
+    const lat = Math.asin(satObj.z_km / r) * (180 / Math.PI)
+    const lon = Math.atan2(satObj.y_km, satObj.x_km) * (180 / Math.PI)
+    return { lat: lat.toFixed(1), lon: lon.toFixed(1) }
+  }, [satObj])
+
+  // Check role in current route
+  const routeRole = useMemo(() => {
+    if (!isConnected || !currentTimeline?.path) return 'STANDBY'
+    const path = currentTimeline.path
+    if (!path.includes(satId)) return 'STANDBY'
+    if (path[1] === satId) return 'CLIENT_ACCESS'
+    if (path[path.length - 2] === satId) return 'GATEWAY_LINK'
+    return 'TRANSIT_RELAY'
+  }, [isConnected, currentTimeline, satId])
+
+  const handleSimulateOutage = () => {
     killSatelliteNow(satId, currentTime_s)
     recalculate()
   }
 
-  // Graceful fallback render if data is loading
   if (!simulationResult || !activeScenario) {
     return (
-      <div
-        style={{
-          width: '300px',
-          height: '100%',
-          borderRadius: '20px',
-          background: 'rgba(16, 19, 26, 0.85)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow:
-            '0 12px 32px rgba(0, 0, 0, 0.7), -1px 0 14px rgba(255, 255, 255, 0.05), 1px 0 14px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-        className="p-4 flex items-center justify-center text-xs font-mono text-zinc-500 backdrop-blur-xl"
-      >
-        <span>Telemetry initializing...</span>
+      <div className="w-[300px] h-full rounded-2xl bg-[#0f1218]/80 border border-white/12 p-4 flex items-center justify-center text-xs font-mono text-zinc-500 backdrop-blur-xl">
+        <span>Инициализация телеметрии...</span>
       </div>
     )
   }
 
-  const planeLabel = satObj?.plane_id ? `PLANE ${satObj.plane_id.replace('P', '')}` : 'PLANE 1'
-  const altKm = activeScenario.environment.altitude_km || 550
-  const routeHops = isConnected && currentTimeline?.path ? currentTimeline.path : [selectedClientId, 'LINK DOWN']
-  const routeDist = isConnected && currentTimeline?.distance_km != null ? currentTimeline.distance_km : 0
-  const routeLatency =
-    isConnected && currentTimeline?.distance_km != null
-      ? ((currentTimeline.distance_km / 299.792) + (currentTimeline.hops || 1) * 2).toFixed(1)
-      : 'N/A'
+  const planeId = satObj?.plane_id || 'P1'
+  const minEl = activeScenario.environment.min_elevation_deg
 
   return (
     <div
@@ -153,333 +130,269 @@ export const SpaceXTelemetryPanel: React.FC = () => {
         width: '300px',
         height: '100%',
         borderRadius: '20px',
-        background: 'rgba(15, 18, 24, 0.40)',
+        background: 'rgba(15, 18, 24, 0.70)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
-        boxShadow:
-          '0 8px 32px rgba(0, 0, 0, 0.45), -1px 0 10px rgba(255, 255, 255, 0.03), 1px 0 10px rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(4px)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(16px)',
       }}
-      className="backdrop-blur-[4px] select-none font-mono shadow-2xl shrink-0"
+      className="select-none font-mono shadow-2xl shrink-0 flex flex-col overflow-hidden text-zinc-200"
     >
-      {/* 2. Header */}
+      {/* Header */}
       <div className="p-3.5 pb-2.5 border-b border-white/10 shrink-0">
         <div className="flex items-start justify-between">
           <div>
-            {/* Subtitle: ACTIVE ASSET */}
             <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-widest font-sans block leading-none">
-              ACTIVE ASSET
+              ТЕЛЕМЕТРИЯ АППАРАТА
             </span>
-            {/* Title: Aurora-1 (S01) */}
-            <h2 className="text-[16px] font-black text-white font-sans mt-1 leading-tight">
-              {satName} ({satId})
+            <h2 className="text-base font-black text-white font-sans mt-1 leading-tight flex items-center gap-2">
+              <span>КА {satId}</span>
+              <span className="text-xs font-mono font-normal text-zinc-400">
+                ({planeId})
+              </span>
             </h2>
-            {/* Metadata Line: PLANE 1 • 550 KM LEO • RELAY MODE */}
-            <div className="text-[10px] font-mono text-zinc-400 mt-1">
-              {planeLabel} • {altKm} KM LEO • RELAY MODE
+            <div className="text-[10px] font-mono text-zinc-400 mt-0.5">
+              550 км LEO • Наклонение 87°
             </div>
           </div>
 
-          {/* Status Pill: [ Nominal ] */}
-          {isSatFailed ? (
-            <span className="bg-zinc-800 border border-white/20 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
-              Offline
-            </span>
-          ) : (
-            <span className="bg-white/10 border border-white/20 text-zinc-200 text-xs px-2 py-0.5 rounded-full font-bold font-sans">
-              Nominal
-            </span>
-          )}
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-sans border uppercase ${
+              !satObj?.active
+                ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                : routeRole !== 'STANDBY'
+                ? 'bg-white text-zinc-950 border-white'
+                : 'bg-white/10 border-white/20 text-zinc-300'
+            }`}
+          >
+            {!satObj?.active
+              ? 'Отказ'
+              : routeRole === 'CLIENT_ACCESS'
+              ? 'Доступ'
+              : routeRole === 'GATEWAY_LINK'
+              ? 'Шлюз'
+              : routeRole === 'TRANSIT_RELAY'
+              ? 'Транзит'
+              : 'В резерве'}
+          </span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* 3. Card 1: Signal Strength Histogram (Monochrome) */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2">
+        {/* Card 1: Подспутниковая точка и радиовидимость */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-xl p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-sans">
-            <span className="text-[11px] font-bold text-zinc-300">Signal strength</span>
-            <span className="text-zinc-400 font-mono text-[10px]">
-              {linkBudget && linkBudget.inLineOfSight
-                ? `${linkBudget.dopplerShiftKhz >= 0 ? '+' : ''}${linkBudget.dopplerShiftKhz} kHz • ${linkBudget.rxPowerDbm} dBm`
-                : isSatFailed
-                ? 'OFFLINE • -120 dBm'
-                : 'NO CARRIER • -120 dBm'}
+            <span className="font-bold text-white flex items-center gap-1.5">
+              <Compass className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Положение и радиовидимость</span>
             </span>
-          </div>
-
-          {/* Big Digit: Real link quality % */}
-          <div className="flex items-baseline justify-between">
-            <span className="text-[18px] font-black text-white font-sans tracking-tight">
-              {isSatFailed ? '0%' : linkBudget?.inLineOfSight ? `${linkBudget.signalPct}%` : '0%'}
-            </span>
-            <span className="text-[9px] text-zinc-400 uppercase font-mono">Carrier: 24.5 GHz</span>
-          </div>
-
-          {/* The 30-Bar Histogram (Monochrome bars) */}
-          <div className="h-12 w-full flex items-end justify-between pt-1">
-            {barHeights.map((val, i) => {
-              const h = isSatFailed ? 4 : Math.max(4, (val / 100) * 44)
-              const isRecent = i >= 24
-              return (
-                <div
-                  key={i}
-                  style={{
-                    width: '5px',
-                    margin: '0 1px',
-                    borderRadius: '2px 2px 0 0',
-                    height: `${h}px`,
-                    backgroundColor: isSatFailed ? '#71717a' : isRecent ? '#ffffff' : '#52525b',
-                  }}
-                  className="transition-all duration-200"
-                />
-              )
-            })}
-          </div>
-
-          <div className="flex justify-between text-[9px] text-zinc-400 font-mono pt-0.5">
-            <span>-30 min</span>
-            <span className="text-zinc-200 font-semibold">NOW</span>
-          </div>
-        </div>
-
-        {/* 4. Card 2: Payload Diagnostics (Monochrome curves) */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2 font-sans">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="font-bold text-zinc-300 uppercase tracking-wider">
-              Payload diagnostics
-            </span>
-            {thermalPower && (
-              <span className="text-[9px] font-mono text-zinc-400 uppercase">
-                {thermalPower.isEclipse ? '● ECLIPSE' : '○ SUNLIT'}
+            {nadirCoords && (
+              <span className="text-[10px] font-mono text-zinc-400">
+                {nadirCoords.lat}°N, {nadirCoords.lon}°E
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-black/40 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[9px] text-zinc-400 uppercase font-semibold">
-                Payload temp
+          <div className="space-y-1.5 text-xs font-mono">
+            {/* Terminal elevation */}
+            <div className="flex items-center justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+              <span className="text-zinc-400 text-[11px] font-sans">
+                Угол места над {selectedClientId}:
               </span>
-              <svg className="w-full h-6 my-1" viewBox="0 0 100 24" preserveAspectRatio="none">
-                <path
-                  d="M0,16 Q20,6 40,12 T75,8 L100,14"
-                  fill="none"
-                  stroke="rgba(255, 255, 255, 0.75)"
-                  strokeWidth="1.5"
-                />
-              </svg>
-              <span className="text-[12px] font-black text-white font-mono">
-                {thermalPower
-                  ? `${thermalPower.payloadTempC >= 0 ? '+' : ''}${thermalPower.payloadTempC}°C`
-                  : '+19.4°C'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`font-bold ${
+                    clientElevation != null && clientElevation >= minEl
+                      ? 'text-white'
+                      : 'text-zinc-500'
+                  }`}
+                >
+                  {clientElevation != null ? `${clientElevation.toFixed(1)}°` : '—'}
+                </span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.2 rounded border font-sans ${
+                    clientElevation != null && clientElevation >= minEl
+                      ? 'bg-white/10 text-white border-white/30'
+                      : 'bg-zinc-900 text-zinc-500 border-white/5'
+                  }`}
+                >
+                  {clientElevation != null && clientElevation >= minEl ? 'Видим (≥10°)' : 'Вне зоны'}
+                </span>
+              </div>
             </div>
 
-            <div className="bg-black/40 border border-white/5 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[9px] text-zinc-400 uppercase font-semibold">Tx power</span>
-              <svg className="w-full h-6 my-1" viewBox="0 0 100 24" preserveAspectRatio="none">
-                <path
-                  d="M0,10 Q25,18 50,6 T80,14 L100,8"
-                  fill="none"
-                  stroke="rgba(255, 255, 255, 0.50)"
-                  strokeWidth="1.5"
-                />
-              </svg>
-              <span className="text-[12px] font-black text-white font-mono">
-                {thermalPower ? `${thermalPower.txPowerDbm.toFixed(1)} dBm` : '0.0 dBm'}
-              </span>
-            </div>
+            {/* Gateway elevation */}
+            {gatewaySite && (
+              <div className="flex items-center justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                <span className="text-zinc-400 text-[11px] font-sans">
+                  Угол места над Шлюзом ({gatewaySite.id}):
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`font-bold ${
+                      gatewayElevation != null && gatewayElevation >= minEl
+                        ? 'text-white'
+                        : 'text-zinc-500'
+                    }`}
+                  >
+                    {gatewayElevation != null ? `${gatewayElevation.toFixed(1)}°` : '—'}
+                  </span>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.2 rounded border font-sans ${
+                      gatewayElevation != null && gatewayElevation >= minEl
+                        ? 'bg-white/10 text-white border-white/30'
+                        : 'bg-zinc-900 text-zinc-500 border-white/5'
+                    }`}
+                  >
+                    {gatewayElevation != null && gatewayElevation >= minEl ? 'Видим' : 'Вне зоны'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 5. Card 3: Anomaly Detected Box (Translucent dark grey with pale straw accent - shown on failure) */}
-        {!alertDismissed && isSatFailed && (
-          <div
-            style={{
-              background: 'rgba(20, 22, 28, 0.65)',
-              border: '1px solid rgba(200, 178, 118, 0.35)',
-              borderRadius: '12px',
-              padding: '12px',
-              backdropFilter: 'blur(4px)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(200, 178, 118, 0.08)',
-            }}
-            className="space-y-2.5 font-sans transition-all"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-[#c8b276]" />
-                <span className="text-[12px] font-bold text-zinc-100">
-                  Critical Offline Alert
-                </span>
-              </div>
-              <button
-                onClick={() => setAlertDismissed(true)}
-                className="text-zinc-400 hover:text-white text-xs cursor-pointer px-1 transition-colors"
-                title="Dismiss warning"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Progress Sliders */}
-            <div className="space-y-2 text-[10px] font-mono">
-              <div>
-                <div className="flex justify-between text-zinc-300">
-                  <span>Orbit deviation:</span>
-                  <b className="text-zinc-200">
-                    {thermalPower ? `${thermalPower.orbitDeviationPct}%` : isSatFailed ? '100%' : '8%'}
-                  </b>
-                </div>
-                <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
-                  <div
-                    style={{
-                      width: `${thermalPower ? thermalPower.orbitDeviationPct : isSatFailed ? 100 : 8}%`,
-                      backgroundColor: isSatFailed ? '#c8b276' : '#ffffff',
-                    }}
-                    className="h-full rounded-xs transition-all duration-300"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-zinc-300">
-                  <span>Thermal threshold:</span>
-                  <b className="text-zinc-200">
-                    {thermalPower ? `${thermalPower.thermalThresholdPct}%` : '58%'}
-                  </b>
-                </div>
-                <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
-                  <div
-                    style={{
-                      width: `${thermalPower ? thermalPower.thermalThresholdPct : 58}%`,
-                      backgroundColor: (thermalPower?.thermalThresholdPct || 0) > 85 ? '#c8b276' : '#ffffff',
-                    }}
-                    className="h-full rounded-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-zinc-300">
-                  <span>Power budget:</span>
-                  <b className="text-zinc-300">
-                    {thermalPower ? `${thermalPower.powerBudgetPct}%` : '0%'}
-                  </b>
-                </div>
-                <div className="h-1.5 w-full bg-black/60 rounded-xs mt-1 overflow-hidden">
-                  <div
-                    style={{
-                      width: `${thermalPower ? thermalPower.powerBudgetPct : 0}%`,
-                      backgroundColor: '#71717a',
-                    }}
-                    className="h-full rounded-xs"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Action Buttons: [ Dismiss ], [ Respond ] */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                onClick={() => setAlertDismissed(true)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#d4d4d8',
-                  fontSize: '11px',
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                }}
-                className="hover:bg-white/10 font-sans font-medium transition-colors"
-              >
-                Dismiss
-              </button>
-
-              <button
-                onClick={handleRespondAnomaly}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  border: '1px solid rgba(255, 255, 255, 0.30)',
-                  color: '#ffffff',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                }}
-                className="hover:bg-white/20 font-sans transition-all"
-                title="Initiate emergency Dijkstra reroute failure test"
-              >
-                Respond
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 6. Card 4: Client Route Breakdown (Monochrome) */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2.5">
+        {/* Card 2: Межспутниковые линии ISL */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-xl p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-sans">
-            <span className="text-zinc-300 font-bold">Client Route Breakdown</span>
-            <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
-                isConnected
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-zinc-800 text-zinc-400 border-white/15'
-              }`}
-            >
-              {isConnected
-                ? `${currentTimeline?.hops} HOPS`
-                : currentTimeline?.reason && currentTimeline.reason !== 'NONE'
-                ? currentTimeline.reason
-                : 'LINK DOWN'}
+            <span className="font-bold text-white flex items-center gap-1.5">
+              <Network className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Межспутниковые связи (ISL)</span>
+            </span>
+            <span className="text-[10px] font-mono text-zinc-300 font-bold bg-white/5 px-2 py-0.5 rounded border border-white/10">
+              {activeISLs.length} линков
             </span>
           </div>
 
-          {/* Hop sequence */}
-          <div className="flex items-center flex-wrap gap-1 bg-black/60 p-2 rounded-lg border border-white/5 text-[11px] font-mono">
-            {routeHops.map((node, i) => (
-              <React.Fragment key={i}>
-                <button
-                  onClick={() => {
-                    if (node.startsWith('S')) setSelectedSatellite(node)
-                  }}
-                  className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors border ${
-                    node === selectedClientId
-                      ? 'text-white bg-white/20 border-white/35 shadow-sm'
-                      : node === 'G_MUR'
-                      ? 'text-zinc-200 bg-white/10 border-white/20'
-                      : node === satId
-                      ? 'text-white bg-white/25 border-white/50 shadow-sm'
-                      : 'text-zinc-300 bg-white/5 border-transparent hover:bg-white/10 hover:text-white'
-                  }`}
+          {activeISLs.length === 0 ? (
+            <div className="text-[11px] text-zinc-500 text-center py-2 font-mono">
+              Нет активных лазерных линий (ISL)
+            </div>
+          ) : (
+            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+              {activeISLs.map((link) => (
+                <div
+                  key={link.peerId}
+                  onClick={() => setSelectedSatellite(link.peerId)}
+                  className="flex items-center justify-between bg-black/40 hover:bg-white/10 p-1.5 px-2.5 rounded-lg border border-white/5 text-[11px] cursor-pointer transition-colors"
                 >
-                  {node}
-                </button>
-                {i < routeHops.length - 1 && (
-                  <ArrowRight className="w-3 h-3 text-zinc-600 shrink-0" />
-                )}
-              </React.Fragment>
-            ))}
+                  <span className="text-white font-bold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    КА {link.peerId}
+                  </span>
+                  <span className="text-zinc-400 font-mono text-[10px]">
+                    {link.distanceKm} км
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Card 3: Текущий сквозной маршрут передачи данных */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-xl p-3 space-y-2.5">
+          <div className="flex items-center justify-between text-[11px] font-sans">
+            <span className="font-bold text-white flex items-center gap-1.5">
+              <Radio className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Маршрут: {selectedClientId} → {gatewaySite?.id || 'Шлюз'}</span>
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
+                isConnected
+                  ? 'bg-emerald-950/60 text-emerald-200 border-emerald-500/40'
+                  : 'bg-rose-950/60 text-rose-200 border-rose-500/40'
+              }`}
+            >
+              {isConnected ? `${currentTimeline?.hops} ХОПА` : 'НЕТ ПУТИ'}
+            </span>
           </div>
 
-          {/* Distance & Latency metrics */}
-          <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
-            <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
-              <span>Distance:</span>
-              <b className="text-zinc-100 font-mono font-bold">{routeDist} km</b>
+          {isConnected && currentTimeline?.path ? (
+            <>
+              {/* Hop chain */}
+              <div className="flex items-center flex-wrap gap-1 bg-black/60 p-2 rounded-xl border border-white/5 text-[11px] font-mono">
+                {currentTimeline.path.map((node, i) => (
+                  <React.Fragment key={i}>
+                    <button
+                      onClick={() => {
+                        if (node.startsWith('S')) setSelectedSatellite(node)
+                      }}
+                      className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors border ${
+                        node === selectedClientId
+                          ? 'text-white bg-white/20 border-white/35'
+                          : node === satId
+                          ? 'text-zinc-950 bg-white border-white shadow-xs'
+                          : node === gatewaySite?.id
+                          ? 'text-zinc-200 bg-white/10 border-white/20'
+                          : 'text-zinc-300 bg-white/5 border-transparent hover:bg-white/10'
+                      }`}
+                    >
+                      {node}
+                    </button>
+                    {i < currentTimeline.path.length - 1 && (
+                      <ArrowRight className="w-3 h-3 text-zinc-600 shrink-0" />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
+                <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                  <span>Длина пути:</span>
+                  <b className="text-white font-mono">{currentTimeline.distance_km} км</b>
+                </div>
+                <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                  <span>Задержка (RTT):</span>
+                  <b className="text-white font-mono">
+                    {((currentTimeline.distance_km / 299.792) * 2).toFixed(1)} мс
+                  </b>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Detailed Diagnostic Box */
+            <div className="bg-black/50 p-2.5 rounded-xl border border-rose-500/30 space-y-1.5 text-xs font-sans">
+              <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <span>Причина отсутствия маршрута:</span>
+              </div>
+              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                {currentTimeline?.reason === 'NO_VISIBLE_SATELLITE' &&
+                  'Нет активных спутников в зоне радиовидимости терминала (угол возвышения < 10°).'}
+                {currentTimeline?.reason === 'ISL_MESH_PARTITION' &&
+                  'Спутник виден над терминалом и над шлюзом, но межспутниковая сеть (ISL) фрагментирована.'}
+                {currentTimeline?.reason === 'GATEWAY_NO_SATELLITE' &&
+                  'В зоне радиовидимости наземного шлюза Мурманск отсутствуют активные космические аппараты.'}
+                {currentTimeline?.reason === 'GATEWAY_OUTAGE' &&
+                  'Опорный шлюз Мурманск недоступен из-за заданного регламентного отказа наземного узла.'}
+                {(!currentTimeline?.reason || currentTimeline.reason === 'NONE') &&
+                  'Разрыв сквозного маршрута доставки данных.'}
+              </p>
             </div>
-            <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
-              <span>Latency:</span>
-              <b className="text-zinc-100 font-mono font-bold">{routeLatency} ms</b>
-            </div>
+          )}
+        </div>
+
+        {/* Card 4: Экстренное тестирование отказа */}
+        <div className="bg-black/40 border border-white/10 rounded-xl p-2.5 space-y-2 font-sans">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-bold text-white flex items-center gap-1.5">
+              <ZapOff className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Тест отказа КА {satId}</span>
+            </span>
           </div>
+          <button
+            onClick={handleSimulateOutage}
+            disabled={isSatFailed}
+            className={`w-full py-1.5 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all border flex items-center justify-center gap-1.5 ${
+              isSatFailed
+                ? 'bg-zinc-800 text-zinc-500 border-transparent cursor-not-allowed'
+                : 'bg-rose-950/40 hover:bg-rose-900/60 border-rose-500/40 text-rose-200'
+            }`}
+          >
+            <ZapOff className="w-3.5 h-3.5" />
+            <span>{isSatFailed ? 'Аппарат уже выведен из строя' : `Смоделировать отказ КА ${satId}`}</span>
+          </button>
         </div>
       </div>
     </div>
   )
 }
-

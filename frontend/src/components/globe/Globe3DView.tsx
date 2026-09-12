@@ -6,22 +6,7 @@ import { groundPosition, computePositions } from '@/core/geometryEngine'
 import { AtmosphereGlowShader } from './AtmosphereShader'
 import { createStarfield } from './Starfield'
 
-// Codename map matching SpaceX mockup
-const CODENAMES: Record<string, string> = {
-  S01: 'Aurora-1',
-  S02: 'Aurora-2',
-  S03: 'Aurora-3',
-  S04: 'Aurora-4',
-  S05: 'Aurora-5',
-  S09: 'Meridian-1',
-  S10: 'Meridian-2',
-  S13: 'Zenith-X',
-  S14: 'Zenith-1',
-  S17: 'Helios-A',
-  S18: 'Helios-B',
-  S19: 'Helios-R',
-  S22: 'Vector-3',
-}
+// Satellite geometries and materials
 
 // Reusable Geometries & Materials for 3D Satellite Models
 const satBusGeo = new THREE.BoxGeometry(0.14, 0.08, 0.09)
@@ -682,7 +667,7 @@ export const Globe3DView: React.FC = () => {
       }
       const isSelected = sat.id === selectedSatelliteId
       const isInRoute = activeRoutePath.includes(sat.id)
-      const codename = CODENAMES[sat.id] || `Sat-${sat.id}`
+      const codename = `КА ${sat.id}`
 
       const colorHex = !sat.active ? 0xf87171 : isInRoute ? 0xffffff : isSelected ? 0xffffff : 0xe4e4e7
 

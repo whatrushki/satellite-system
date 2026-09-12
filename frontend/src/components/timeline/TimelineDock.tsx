@@ -1,8 +1,6 @@
-﻿import React, { useEffect } from 'react'
+import React from 'react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { AvailabilityGantt } from './AvailabilityGantt'
-import { Button } from '@/components/ui/button'
-import { Slider } from '@/components/ui/slider'
 import {
   Play,
   Pause,
@@ -23,6 +21,8 @@ export const TimelineDock: React.FC = () => {
     playbackSpeed,
     setPlaybackSpeed,
     simulationResult,
+    viewMode,
+    setViewMode,
   } = useSimulationStore()
 
   const horizon = simulationResult?.horizon_s || 86400
@@ -33,110 +33,125 @@ export const TimelineDock: React.FC = () => {
   const formatTime = (secs: number) => {
     const h = Math.floor(secs / 3600)
     const m = Math.floor((secs % 3600) / 60)
-    const s = secs % 60
+    const s = Math.floor(secs % 60)
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s
       .toString()
       .padStart(2, '0')}`
   }
 
-  // Playback timer effect
-  useEffect(() => {
-    if (!isPlaying) return
-
-    let lastTime = performance.now()
-    const interval = setInterval(() => {
-      const now = performance.now()
-      const dt = (now - lastTime) / 1000
-      lastTime = now
-
-      const advanceSec = dt * playbackSpeed * 2
-      const nextT = (currentTime_s + advanceSec) % horizon
-      setTime(nextT)
-    }, 40)
-
-    return () => clearInterval(interval)
-  }, [isPlaying, playbackSpeed, currentTime_s, horizon, setTime])
-
   const speeds = [1, 5, 30, 120, 600]
 
   return (
-    <div className="w-full bg-slate-900/95 border-t border-slate-800/90 p-3 flex flex-col gap-2.5 backdrop-blur-md shadow-2xl z-30 select-none">
+    <div
+      style={{
+        background: 'rgba(11, 15, 23, 0.90)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.2)',
+      }}
+      className="w-full border border-white/12 p-3 rounded-2xl flex flex-col gap-2.5 select-none font-mono text-zinc-200 pointer-events-auto"
+    >
       {/* Upper bar: Time Scrubber + Controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* 2D / 3D Toggle */}
+        <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-xs font-sans font-bold">
+          <button
+            onClick={() => setViewMode('2d')}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+              viewMode === '2d'
+                ? 'bg-white/20 text-white shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            2D
+          </button>
+          <button
+            onClick={() => setViewMode('3d')}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+              viewMode === '3d'
+                ? 'bg-white/20 text-white shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            3D
+          </button>
+        </div>
+
+        <div className="h-4 w-[1px] bg-white/10" />
+
         {/* Play / Pause / Step buttons */}
-        <div className="flex items-center gap-1.5">
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8"
+        <div className="flex items-center gap-1">
+          <button
             onClick={() => setTime(0)}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
             title="Перейти в начало (00:00:00)"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8"
+          </button>
+          <button
             onClick={() => stepTime(-1)}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
             title="Шаг назад (-120 сек)"
           >
             <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant={isPlaying ? 'destructive' : 'default'}
-            className="h-8 w-9"
+          </button>
+          <button
             onClick={togglePlay}
+            className={`px-3 py-1 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all flex items-center gap-1.5 border ${
+              isPlaying
+                ? 'bg-rose-950/60 border-rose-500/40 text-rose-200 hover:bg-rose-900/60'
+                : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200 hover:bg-emerald-900/60'
+            }`}
             title={isPlaying ? 'Пауза' : 'Воспроизведение'}
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8"
+            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+            <span>{isPlaying ? 'ПАУЗА' : 'СТАРТ'}</span>
+          </button>
+          <button
             onClick={() => stepTime(1)}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
             title="Шаг вперед (+120 сек)"
           >
             <ChevronRight className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
 
         {/* Digital Time Readout */}
-        <div className="bg-slate-950 px-3 py-1.5 rounded-md border border-slate-800 font-mono flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-sky-400" />
-          <span className="text-sm font-bold text-sky-300 tabular-nums">
+        <div className="bg-black/60 px-3 py-1 rounded-xl border border-white/10 font-mono flex items-center gap-2 shrink-0">
+          <Clock className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="text-xs font-bold text-white tabular-nums">
             {formatTime(currentTime_s)}
           </span>
-          <span className="text-slate-500 text-xs">/ {formatTime(horizon)}</span>
-          <span className="text-[10px] text-slate-500 ml-1">
-            [шаг {Math.floor(currentTime_s / step) + 1} / {Math.floor(horizon / step)}]
+          <span className="text-zinc-500 text-[10px]">/ {formatTime(horizon)}</span>
+          <span className="text-[10px] text-zinc-400 font-mono">
+            [шаг {Math.floor(currentTime_s / step) + 1}/{Math.floor(horizon / step)}]
           </span>
         </div>
 
         {/* Main Timeline Slider */}
-        <div className="flex-1 flex items-center px-2">
-          <Slider
-            value={[currentTime_s]}
+        <div className="flex-1 flex items-center px-1">
+          <input
+            type="range"
+            min={0}
             max={maxTime}
             step={step}
-            onValueChange={(val) => setTime(val[0])}
-            className="cursor-pointer"
+            value={currentTime_s}
+            onChange={(e) => setTime(parseFloat(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-white transition-all bg-zinc-800 hover:brightness-125"
           />
         </div>
 
         {/* Speed Selector */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-md border border-slate-800">
-          <FastForward className="w-3.5 h-3.5 text-slate-400 ml-1" />
+        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10 shrink-0">
+          <FastForward className="w-3 h-3 text-zinc-400 ml-1" />
           {speeds.map((s) => (
             <button
               key={s}
               onClick={() => setPlaybackSpeed(s)}
-              className={`px-2 py-0.5 text-[11px] font-mono rounded cursor-pointer transition-colors ${
+              className={`px-2 py-0.5 text-[10px] font-mono rounded-lg cursor-pointer transition-colors ${
                 playbackSpeed === s
-                  ? 'bg-sky-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-white text-zinc-950 font-bold'
+                  : 'text-zinc-400 hover:text-white hover:bg-white/10'
               }`}
             >
               {s}x
