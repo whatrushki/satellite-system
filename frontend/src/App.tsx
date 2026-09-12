@@ -12,6 +12,24 @@ import { ExportDialog } from '@/components/export/ExportDialog'
 import { ImportDialog } from '@/components/export/ImportDialog'
 import { SandboxDock } from '@/components/sandbox/SandboxDock'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { PresentationView } from '@/components/presentation/PresentationView'
+
+const checkIsPresentation = () => {
+  if (typeof window === 'undefined') return false
+  const path = window.location.pathname.toLowerCase()
+  const hash = window.location.hash.toLowerCase()
+  const search = window.location.search.toLowerCase()
+  return (
+    path === '/presentation' ||
+    path === '/presentation/' ||
+    path.endsWith('/presentation') ||
+    path.endsWith('/presentation/') ||
+    hash === '#presentation' ||
+    hash === '#/presentation' ||
+    hash.includes('presentation') ||
+    search.includes('presentation')
+  )
+}
 
 export const App: React.FC = () => {
   const { loadDefaultScenario } = useScenarioStore()
@@ -19,9 +37,24 @@ export const App: React.FC = () => {
 
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isPresentation, setIsPresentation] = useState<boolean>(checkIsPresentation)
 
-  // Initial load on mount
+  // Sync route changes
   useEffect(() => {
+    const handleLocationChange = () => {
+      setIsPresentation(checkIsPresentation())
+    }
+    window.addEventListener('popstate', handleLocationChange)
+    window.addEventListener('hashchange', handleLocationChange)
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange)
+      window.removeEventListener('hashchange', handleLocationChange)
+    }
+  }, [])
+
+  // Initial load on mount (for dashboard)
+  useEffect(() => {
+    if (isPresentation) return
     const init = async () => {
       await loadDefaultScenario('01_full_constellation')
       setTimeout(() => {
@@ -29,7 +62,28 @@ export const App: React.FC = () => {
       }, 50)
     }
     init()
-  }, [])
+  }, [isPresentation])
+
+  if (isPresentation) {
+    return (
+      <PresentationView
+        onExit={() => {
+          if (window.location.hash.includes('presentation')) {
+            window.location.hash = ''
+          }
+          if (window.location.search.includes('presentation')) {
+            const url = new URL(window.location.href)
+            url.searchParams.delete('presentation')
+            window.history.pushState({}, '', url.pathname + (url.search ? url.search : '') + url.hash)
+          }
+          if (window.location.pathname.includes('presentation')) {
+            window.history.pushState({}, '', window.location.pathname.replace(/\/presentation\/?$/, '') || '/')
+          }
+          setIsPresentation(false)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="relative w-screen h-screen bg-[#06080d] text-slate-100 overflow-hidden font-sans select-none">
