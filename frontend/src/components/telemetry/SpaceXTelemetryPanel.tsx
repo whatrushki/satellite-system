@@ -383,7 +383,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                     <span className="text-zinc-400 font-sans">Длина пути / Задержка:</span>
                     <b className="text-white font-mono">
                       {liveRoute
-                        ? `${Math.round(liveRoute.distance_km)} км (${liveRoute.latency_ms.toFixed(1)} мс)`
+                        ? `${Math.round(liveRoute.distance_km)} км (${(liveRoute.latency_ms * 2).toFixed(1)} мс RTT)`
                         : 'Маршрут прерван'}
                     </b>
                   </div>
@@ -659,7 +659,7 @@ export const SpaceXTelemetryPanel: React.FC = () => {
                 <div className="flex justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                   <span>Задержка (RTT):</span>
                   <b className="text-white font-mono">
-                    {liveRoute.latency_ms.toFixed(1)} мс
+                    {(liveRoute.latency_ms * 2).toFixed(1)} мс
                   </b>
                 </div>
               </div>
