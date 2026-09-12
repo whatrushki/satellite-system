@@ -72,7 +72,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* 5. Floating Bottom Center: Timeline Dock (with comfortable 20px spacing from sidebars) */}
-          <div className="absolute left-[316px] right-[336px] bottom-4 z-30 pointer-events-auto">
+          <div className="absolute left-[304px] right-[324px] bottom-4 z-30 pointer-events-auto">
             <ErrorBoundary fallbackTitle="Временная шкала и диаграмма доступности">
               <TimelineDock />
             </ErrorBoundary>

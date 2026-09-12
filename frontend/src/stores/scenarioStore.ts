@@ -29,6 +29,8 @@ interface ScenarioState {
   activeScenarioId: string
   availableScenarios: ScenarioRegistryItem[]
   savedVariants: SavedVariant[]
+  scenarioOriginalFailures: FailureOutage[]
+  scenarioOriginalGateways: any[]
   isLoading: boolean
   error: string | null
 
@@ -41,6 +43,7 @@ interface ScenarioState {
   addFailure: (f: FailureOutage) => void
   removeFailure: (index: number) => void
   clearAllFailures: () => void
+  resetSandboxManualFailures: () => void
   killSatelliteNow: (satId: string, currentTime_s: number) => void
   restoreSatelliteNow: (satId: string, currentTime_s: number) => void
   clearAllSatelliteFailures: (satId: string) => void
@@ -59,13 +62,22 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   activeScenarioId: '01_full_constellation',
   availableScenarios: DEFAULT_SCENARIOS,
   savedVariants: [],
+  scenarioOriginalFailures: [],
+  scenarioOriginalGateways: [],
   isLoading: false,
   error: null,
 
   loadDefaultScenario: async (id: string) => {
     const existing = get().availableScenarios.find((s) => s.id === id)
     if (existing?.scenario) {
-      set({ activeScenario: existing.scenario, activeScenarioId: id, isLoading: false, error: null })
+      set({
+        activeScenario: existing.scenario,
+        activeScenarioId: id,
+        scenarioOriginalFailures: JSON.parse(JSON.stringify(existing.scenario.failures || [])),
+        scenarioOriginalGateways: JSON.parse(JSON.stringify(existing.scenario.gateway_outages || [])),
+        isLoading: false,
+        error: null,
+      })
       return
     }
     set({ isLoading: true, error: null })
@@ -76,14 +88,27 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
       const updatedList = get().availableScenarios.map((item) =>
         item.id === id ? { ...item, scenario: data } : item
       )
-      set({ activeScenario: data, activeScenarioId: id, availableScenarios: updatedList, isLoading: false })
+      set({
+        activeScenario: data,
+        activeScenarioId: id,
+        scenarioOriginalFailures: JSON.parse(JSON.stringify(data.failures || [])),
+        scenarioOriginalGateways: JSON.parse(JSON.stringify(data.gateway_outages || [])),
+        availableScenarios: updatedList,
+        isLoading: false,
+      })
     } catch (err: any) {
       set({ error: err.message || 'Ошибка загрузки сценария', isLoading: false })
     }
   },
 
   setScenario: (s: Scenario, id = 'custom') => {
-    set({ activeScenario: s, activeScenarioId: id, error: null })
+    set({
+      activeScenario: s,
+      activeScenarioId: id,
+      scenarioOriginalFailures: JSON.parse(JSON.stringify(s.failures || [])),
+      scenarioOriginalGateways: JSON.parse(JSON.stringify(s.gateway_outages || [])),
+      error: null,
+    })
   },
 
   registerScenario: (id: string, label: string, scenario: Scenario) => {
@@ -93,6 +118,8 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
       availableScenarios: [...prev, newItem],
       activeScenario: scenario,
       activeScenarioId: id,
+      scenarioOriginalFailures: JSON.parse(JSON.stringify(scenario.failures || [])),
+      scenarioOriginalGateways: JSON.parse(JSON.stringify(scenario.gateway_outages || [])),
       error: null,
     })
   },
@@ -169,6 +196,20 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
         ...cur,
         failures: [],
         gateway_outages: [],
+      },
+    })
+  },
+
+  resetSandboxManualFailures: () => {
+    const cur = get().activeScenario
+    if (!cur) return
+    const origFailures = get().scenarioOriginalFailures || []
+    const origGateways = get().scenarioOriginalGateways || []
+    set({
+      activeScenario: {
+        ...cur,
+        failures: JSON.parse(JSON.stringify(origFailures)),
+        gateway_outages: JSON.parse(JSON.stringify(origGateways)),
       },
     })
   },

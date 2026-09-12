@@ -231,6 +231,12 @@ export const Globe3DView: React.FC = () => {
     pinMesh: THREE.Mesh
     dotMesh: THREE.Mesh
     ringMesh?: THREE.Mesh
+    labelNormal?: THREE.Sprite
+    labelOffline?: THREE.Sprite
+    badgeOffline?: THREE.Sprite
+    badgeReceiving?: THREE.Sprite
+    badgeOnline?: THREE.Sprite
+    isGateway?: boolean
   }>>(new Map())
   const updateRealtimePositionsRef = useRef<((t: number) => void) | null>(null)
   const islLineRef = useRef<THREE.LineSegments | null>(null)
@@ -870,48 +876,76 @@ export const Globe3DView: React.FC = () => {
       ringMesh.visible = isGatewayOffline || isSelected || isReceiving
       satGroup.add(ringMesh)
 
-      groundNodesMapRef.current.set(g.id, { pinMesh, dotMesh, ringMesh })
+      let labelNormal: THREE.Sprite | undefined
+      let labelOffline: THREE.Sprite | undefined
+      let badgeOffline: THREE.Sprite | undefined
+      let badgeReceiving: THREE.Sprite | undefined
+      let badgeOnline: THREE.Sprite | undefined
 
-      // Floating text label above ground station
-      const labelText = isGatewayOffline
-        ? `[🔴 ШЛЮЗ (ОТКАЗ)] ${g.name}`
-        : g.role === 'gateway'
-        ? `[ШЛЮЗ] ${g.name}`
-        : `[АБОНЕНТ] ${g.id}`
-      const labelColor = isGatewayOffline
-        ? '#ef4444'
-        : isSelected
-        ? '#ffffff'
-        : '#cbd5e1'
+      if (g.role === 'gateway') {
+        // Normal gateway label
+        labelNormal = createTextSprite(`[ШЛЮЗ] ${g.name}`, '#cbd5e1', 0.75, 0.18)
+        labelNormal.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
+        labelNormal.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
+        labelNormal.visible = !isGatewayOffline
+        satGroup.add(labelNormal)
 
-      const groundLabel = createTextSprite(
-        labelText,
-        labelColor,
-        isGatewayOffline ? 0.95 : 0.75,
-        0.18
-      )
-      groundLabel.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
-      groundLabel.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
-      satGroup.add(groundLabel)
+        // Offline gateway label
+        labelOffline = createTextSprite(`[🔴 ШЛЮЗ (ОТКАЗ)] ${g.name}`, '#ef4444', 0.95, 0.18)
+        labelOffline.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
+        labelOffline.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
+        labelOffline.visible = isGatewayOffline
+        satGroup.add(labelOffline)
 
-      // Connection Status Badge Sprite directly above the node
-      if (isGatewayOffline) {
-        const statusBadge = createTextSprite('[🔴 ШЛЮЗ НЕ РАБОТАЕТ (ОТКАЗ)]', '#ef4444', 0.95, 0.20)
-        statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
-        satGroup.add(statusBadge)
-      } else if (isClient && isSelected) {
-        const statusText = isConnected ? '● СВЯЗЬ: АКТИВНА' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ КА'
-        const statusColor = isConnected ? '#10b981' : hasSatVis ? '#f59e0b' : '#ef4444'
-        const statusBadge = createTextSprite(`[${statusText}]`, statusColor, 0.85, 0.19)
-        statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
-        satGroup.add(statusBadge)
-      } else if (!isClient) {
-        const gwText = isReceiving ? '● ПРИЕМ ТРАФИКА' : '● ШЛЮЗ В СЕТИ'
-        const gwColor = isReceiving ? '#10b981' : '#60a5fa'
-        const statusBadge = createTextSprite(`[${gwText}]`, gwColor, 0.80, 0.18)
-        statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
-        satGroup.add(statusBadge)
+        // Status badge: Offline
+        badgeOffline = createTextSprite('[🔴 ШЛЮЗ НЕ РАБОТАЕТ (ОТКАЗ)]', '#ef4444', 0.95, 0.20)
+        badgeOffline.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        badgeOffline.visible = isGatewayOffline
+        satGroup.add(badgeOffline)
+
+        // Status badge: Receiving Traffic
+        badgeReceiving = createTextSprite('[● ПРИЕМ ТРАФИКА]', '#10b981', 0.85, 0.19)
+        badgeReceiving.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        badgeReceiving.visible = !isGatewayOffline && isReceiving
+        satGroup.add(badgeReceiving)
+
+        // Status badge: Online Ready (Blue)
+        badgeOnline = createTextSprite('[● ШЛЮЗ В СЕТИ]', '#60a5fa', 0.80, 0.18)
+        badgeOnline.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+        badgeOnline.visible = !isGatewayOffline && !isReceiving
+        satGroup.add(badgeOnline)
+      } else {
+        // Client ground station label
+        const groundLabel = createTextSprite(
+          `[АБОНЕНТ] ${g.id}`,
+          isSelected ? '#ffffff' : '#cbd5e1',
+          0.75,
+          0.18
+        )
+        groundLabel.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.36)))
+        groundLabel.userData = { type: 'ground', id: g.id, name: g.name, role: g.role }
+        satGroup.add(groundLabel)
+
+        if (isSelected) {
+          const statusText = isConnected ? '● СВЯЗЬ: АКТИВНА' : hasSatVis ? '● РАЗРЫВ МИС' : '● ВНЕ ЗОНЫ КА'
+          const statusColor = isConnected ? '#10b981' : hasSatVis ? '#f59e0b' : '#ef4444'
+          const statusBadge = createTextSprite(`[${statusText}]`, statusColor, 0.85, 0.19)
+          statusBadge.position.copy(pos.clone().add(pos.clone().normalize().multiplyScalar(0.54)))
+          satGroup.add(statusBadge)
+        }
       }
+
+      groundNodesMapRef.current.set(g.id, {
+        pinMesh,
+        dotMesh,
+        ringMesh,
+        labelNormal,
+        labelOffline,
+        badgeOffline,
+        badgeReceiving,
+        badgeOnline,
+        isGateway: g.role === 'gateway',
+      })
     }
 
     // 2. Build Satellites (Ground Track Point on the Globe + Perpendicular Radial Beam + 3D Spacecraft Model in Orbit)
@@ -1215,6 +1249,29 @@ export const Globe3DView: React.FC = () => {
         if (gNode.ringMesh) {
           gNode.ringMesh.visible = isOffline || isSelected || isReceiving
           ;(gNode.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(statusColorHex)
+        }
+
+        // Dynamically synchronize gateway floating label and status badge sprites
+        if (gNode.isGateway) {
+          if (isOffline) {
+            if (gNode.badgeOffline) gNode.badgeOffline.visible = true
+            if (gNode.badgeReceiving) gNode.badgeReceiving.visible = false
+            if (gNode.badgeOnline) gNode.badgeOnline.visible = false
+            if (gNode.labelOffline) gNode.labelOffline.visible = true
+            if (gNode.labelNormal) gNode.labelNormal.visible = false
+          } else if (isReceiving) {
+            if (gNode.badgeOffline) gNode.badgeOffline.visible = false
+            if (gNode.badgeReceiving) gNode.badgeReceiving.visible = true
+            if (gNode.badgeOnline) gNode.badgeOnline.visible = false
+            if (gNode.labelOffline) gNode.labelOffline.visible = false
+            if (gNode.labelNormal) gNode.labelNormal.visible = true
+          } else {
+            if (gNode.badgeOffline) gNode.badgeOffline.visible = false
+            if (gNode.badgeReceiving) gNode.badgeReceiving.visible = false
+            if (gNode.badgeOnline) gNode.badgeOnline.visible = true
+            if (gNode.labelOffline) gNode.labelOffline.visible = false
+            if (gNode.labelNormal) gNode.labelNormal.visible = true
+          }
         }
       }
 

@@ -52,16 +52,16 @@ export const TimelineDock: React.FC = () => {
         WebkitBackdropFilter: 'blur(20px)',
         boxShadow: '0 12px 40px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.2)',
       }}
-      className="w-full border border-white/12 p-3 rounded-2xl flex flex-col gap-2.5 select-none font-mono text-zinc-200 pointer-events-auto"
+      className="w-full border border-white/12 p-3 rounded-2xl flex flex-col gap-2 select-none font-mono text-zinc-200 pointer-events-auto overflow-hidden"
     >
       {/* Upper bar: Controls and Speed settings */}
-      <div className="flex items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
           {/* 2D / 3D Toggle */}
-          <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-xs font-sans font-bold">
+          <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-xs font-sans font-bold shrink-0">
             <button
               onClick={() => setViewMode('2d')}
-              className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+              className={`px-2 py-1 rounded-lg cursor-pointer transition-colors ${
                 viewMode === '2d'
                   ? 'bg-white/20 text-white shadow-xs'
                   : 'text-zinc-400 hover:text-white'
@@ -71,7 +71,7 @@ export const TimelineDock: React.FC = () => {
             </button>
             <button
               onClick={() => setViewMode('3d')}
-              className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+              className={`px-2 py-1 rounded-lg cursor-pointer transition-colors ${
                 viewMode === '3d'
                   ? 'bg-white/20 text-white shadow-xs'
                   : 'text-zinc-400 hover:text-white'
@@ -81,27 +81,27 @@ export const TimelineDock: React.FC = () => {
             </button>
           </div>
 
-          <div className="h-4 w-[1px] bg-white/10" />
+          <div className="h-4 w-[1px] bg-white/10 shrink-0" />
 
           {/* Play / Pause / Step buttons */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={() => setTime(0)}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
+              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
               title="Перейти в начало (00:00:00)"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => stepTime(-1)}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
+              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
               title="Шаг назад (-120 сек)"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={togglePlay}
-              className={`px-3 py-1 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all flex items-center gap-1.5 border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold font-sans cursor-pointer transition-all flex items-center gap-1 border ${
                 isPlaying
                   ? 'bg-rose-950/60 border-rose-500/40 text-rose-200 hover:bg-rose-900/60'
                   : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200 hover:bg-emerald-900/60'
@@ -113,21 +113,21 @@ export const TimelineDock: React.FC = () => {
             </button>
             <button
               onClick={() => stepTime(1)}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
+              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer border border-transparent hover:border-white/15 transition-all"
               title="Шаг вперед (+120 сек)"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Digital Time Readout */}
-          <div className="bg-black/60 px-3 py-1 rounded-xl border border-white/10 font-mono flex items-center gap-2 shrink-0">
+          <div className="bg-black/60 px-2.5 py-1 rounded-xl border border-white/10 font-mono flex items-center gap-1.5 shrink-0">
             <Clock className="w-3.5 h-3.5 text-zinc-400" />
             <span className="text-xs font-bold text-white tabular-nums">
               {formatTime(currentTime_s)}
             </span>
             <span className="text-zinc-500 text-[10px]">/ {formatTime(horizon)}</span>
-            <span className="text-[10px] text-zinc-400 font-mono">
+            <span className="text-[10px] text-zinc-500 font-mono hidden xl:inline">
               [шаг {Math.floor(currentTime_s / step) + 1}/{Math.floor(horizon / step)}]
             </span>
           </div>
@@ -136,11 +136,11 @@ export const TimelineDock: React.FC = () => {
         {/* Speed Selector + Gantt Toggle */}
         <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10 shrink-0">
           <FastForward className="w-3 h-3 text-zinc-400 ml-1" />
-          {speeds.map((s) => (
+          {[1, 2, 5, 10, 60].map((s) => (
             <button
               key={s}
               onClick={() => setPlaybackSpeed(s)}
-              className={`px-2 py-0.5 text-[10px] font-mono rounded-lg cursor-pointer transition-colors ${
+              className={`px-1.5 py-0.5 text-[9.5px] font-mono rounded-lg cursor-pointer transition-colors ${
                 playbackSpeed === s
                   ? 'bg-white text-zinc-950 font-bold'
                   : 'text-zinc-400 hover:text-white hover:bg-white/10'
@@ -152,7 +152,7 @@ export const TimelineDock: React.FC = () => {
           <div className="w-[1px] h-3.5 bg-white/15 mx-0.5" />
           <button
             onClick={() => setIsGanttCollapsed(!isGanttCollapsed)}
-            className="px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-white hover:bg-white/10 rounded-md cursor-pointer flex items-center gap-0.5"
+            className="px-2 py-0.5 text-[10px] text-zinc-300 hover:text-white hover:bg-white/10 rounded-lg cursor-pointer flex items-center gap-0.5 transition-colors"
             title={isGanttCollapsed ? 'Показать диаграмму доступности' : 'Свернуть диаграмму'}
           >
             {isGanttCollapsed ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}

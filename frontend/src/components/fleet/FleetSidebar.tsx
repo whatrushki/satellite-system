@@ -109,12 +109,12 @@ export const FleetSidebar: React.FC = () => {
     >
       {/* Header Section */}
       <div className="p-3.5 pb-2 border-b border-white/10 shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           {/* Subtab switcher */}
-          <div className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/10 text-[10px] font-sans">
+          <div className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/10 text-[9.5px] font-sans">
             <button
               onClick={() => setActiveTab('fleet')}
-              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'fleet' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -122,7 +122,7 @@ export const FleetSidebar: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('stations')}
-              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'stations' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -130,7 +130,7 @@ export const FleetSidebar: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('orbits')}
-              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'orbits' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -138,7 +138,7 @@ export const FleetSidebar: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('outages')}
-              className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
+              className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
                 activeTab === 'outages' ? 'bg-white/20 text-white font-bold' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -146,7 +146,7 @@ export const FleetSidebar: React.FC = () => {
             </button>
           </div>
 
-          <span className="text-[10px] font-mono text-zinc-200 font-bold bg-white/5 px-1.5 py-0.5 rounded-md border border-white/10">
+          <span className="text-[10px] font-mono text-zinc-200 font-bold bg-white/5 px-2 py-0.5 rounded-md border border-white/10 shrink-0 ml-1.5">
             {activeSatsCount}/{totalSatsCount}
           </span>
         </div>

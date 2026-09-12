@@ -6,7 +6,9 @@ import { Sliders, Download, RotateCcw, CheckCircle2 } from 'lucide-react'
 export const SandboxDock: React.FC = () => {
   const {
     activeScenario,
-    clearAllFailures,
+    scenarioOriginalFailures,
+    scenarioOriginalGateways,
+    resetSandboxManualFailures,
     exportSandboxScenario,
   } = useScenarioStore()
   const { currentTime_s, recalculate } = useSimulationStore()
@@ -15,6 +17,13 @@ export const SandboxDock: React.FC = () => {
   const satFailures = activeScenario?.failures || []
   const gatewayFailures = activeScenario?.gateway_outages || []
   const totalIncidents = satFailures.length + gatewayFailures.length
+
+  // Check if manual incidents were added on top of scenario defaults
+  const origFailures = scenarioOriginalFailures || []
+  const origGateways = scenarioOriginalGateways || []
+  const hasManualChanges =
+    JSON.stringify(satFailures) !== JSON.stringify(origFailures) ||
+    JSON.stringify(gatewayFailures) !== JSON.stringify(origGateways)
 
   // Current real-time active outages at currentTime_s
   const activeNowSatCount = useMemo(() => {
@@ -29,8 +38,8 @@ export const SandboxDock: React.FC = () => {
     ).length
   }, [gatewayFailures, currentTime_s])
 
-  const handleResetAll = () => {
-    clearAllFailures()
+  const handleResetManual = () => {
+    resetSandboxManualFailures()
     recalculate()
   }
 
@@ -111,14 +120,18 @@ export const SandboxDock: React.FC = () => {
         </button>
 
         <button
-          onClick={handleResetAll}
-          disabled={totalIncidents === 0}
+          onClick={handleResetManual}
+          disabled={!hasManualChanges}
           className={`py-1.5 px-2.5 rounded-xl border text-xs font-sans font-bold cursor-pointer transition-all flex items-center justify-center gap-1 active:scale-[0.98] ${
-            totalIncidents > 0
+            hasManualChanges
               ? 'bg-rose-950/40 hover:bg-rose-900/60 border-rose-500/40 text-rose-200'
               : 'bg-white/5 border-white/5 text-zinc-600 cursor-not-allowed'
           }`}
-          title="Сбросить все смоделированные аварии и восстановить штатную группировку"
+          title={
+            hasManualChanges
+              ? 'Сбросить только добавленные вручную отказы (штатные отказы сценария сохраняются)'
+              : 'Нет добавленных вручную отказов'
+          }
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Сброс</span>
