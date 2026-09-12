@@ -64,4 +64,13 @@ Thumbs.db
 *.swp
 *.swo
 .eslintcache
+# AI Agents & Skills
 .agents/
+.agent/
+.skills/
+skills/
+.gemini/
+.antigravity/
+.system_generated/
+.cursor/
+.claude/

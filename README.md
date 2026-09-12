@@ -1,4 +1,4 @@
-﻿# COSMO-NET: Проектирование устойчивой спутниковой группировки связи
+# COSMO-NET: Проектирование устойчивой спутниковой группировки связи
 
 <div align="center">
 
@@ -141,21 +141,31 @@
   - Период сидерического вращения Земли: $T = 86164.09054\text{ с}$ ($\omega_e \approx 7.2921151467 \cdot 10^{-5}\text{ рад/с}$)
   - Скорость света: $c = 299792.458\text{ км/с}$
 * **Орбитальное движение:**
-  Радиус орбиты $r = R + h = 6921.0\text{ км}$. Среднее движение $n = \sqrt{\mu / r^3} \approx 0.00109678\text{ рад/с}$.  
-  Угловой аргумент широты: $u(t) = \text{radians}(\text{slot\_deg} + \text{phase\_deg}) + n \cdot t$.
+  Радиус круговой орбиты: $r = R + h = 6921.0\text{ км}$ при высоте $h = 550.0\text{ км}$.  
+  Среднее движение (угловая скорость):
+  $$n = \sqrt{\frac{\mu}{r^3}} \approx 0.00109678\text{ рад/с}$$
+  Угловой аргумент широты аппарата:
+  $$u(t) = u_0 + n \cdot t = \frac{(\text{slot} + \text{phase}) \cdot \pi}{180^\circ} + n \cdot t$$
+  где `slot` — начальный слот КА (`slot_deg`), `phase` — орбитальный сдвиг плоскости (`phase_deg`).
 * **Координатные преобразования ECI $\to$ ECEF:**
-  $$x = r(\cos\Omega\cos u - \sin\Omega\sin u\cos i), \quad y = r(\sin\Omega\cos u + \cos\Omega\sin u\cos i), \quad z = r\sin u\sin i$$
-  Вращение Земли на угол $\theta(t) = \text{radians}(\text{earth\_angle0}) + \omega_e t$:
-  $$x_e = \cos\theta \cdot x + \sin\theta \cdot y, \quad y_e = -\sin\theta \cdot x + \cos\theta \cdot y, \quad z_e = z$$
-* **Векторная проверка окклюзии Землей межспутниковых линий:**
-  Для пары аппаратов с координатами $a$ и $b$ ($d = b - a$):
-  $$q = \text{clip}\left(-\frac{a \cdot d}{d \cdot d}, 0, 1\right), \quad p = a + q \cdot d$$
-  Линия свободна от затенения Землей тогда и только тогда, когда расстояние от центра планеты до ближайшей точки отрезка строго больше радиуса: $\|p\| > R$.
+  Координаты в инерциальной геоцентрической системе (ECI) для наклонения $i = 87^\circ$ и прямого восхождения $\Omega$:
+  $$\begin{cases}
+  x = r(\cos\Omega\cos u - \sin\Omega\sin u\cos i) \\
+  y = r(\sin\Omega\cos u + \cos\Omega\sin u\cos i) \\
+  z = r\sin u\sin i
+  \end{cases}$$
+  Вращение Земли на угол $\theta(t) = \theta_0 + \omega_e \cdot t$ (где $\theta_0 = \text{earth\_angle0} \cdot \pi / 180^\circ$):
+  $$\begin{pmatrix} x_e \\ y_e \\ z_e \end{pmatrix} = \begin{pmatrix} \cos\theta \cdot x + \sin\theta \cdot y \\ -\sin\theta \cdot x + \cos\theta \cdot y \\ z \end{pmatrix}$$
+* **Векторная проверка окклюзии Землей межспутниковых линий (ISL):**
+  Для пары аппаратов с координатами $\mathbf{a}$ и $\mathbf{b}$ (вектор относительного положения $\mathbf{d} = \mathbf{b} - \mathbf{a}$):
+  $$q = \text{clip}\left(-\frac{\mathbf{a} \cdot \mathbf{d}}{\mathbf{d} \cdot \mathbf{d}}, 0, 1\right), \quad \mathbf{p} = \mathbf{a} + q \cdot \mathbf{d}$$
+  Линия связи свободна от затенения Землей тогда и только тогда, когда минимальное расстояние от центра Земли до луча строго больше её радиуса: $\|\mathbf{p}\| > R$.
 * **Угол возвышения наземной станции (Elevation):**
-  Нормаль к поверхности $n_g = g / R$. Вектор направления $dif = s - g$.
-  $$\beta = \arcsin\left(\text{clip}\left(\frac{dif \cdot n_g}{\|dif\|}, -1, 1\right)\right) \cdot \frac{180}{\pi} \ge \text{min\_elevation\_deg} \quad (10^\circ)$$
+  Координаты пункта $\mathbf{g} = R(\cos\varphi\cos\lambda, \cos\varphi\sin\lambda, \sin\varphi)$, единичная нормаль $\mathbf{n}_g = \mathbf{g} / R$, вектор визирования $\mathbf{dif} = \mathbf{s} - \mathbf{g}$:
+  $$\beta = \arcsin\left(\text{clip}\left(\frac{\mathbf{dif} \cdot \mathbf{n}_g}{\|\mathbf{dif}\|}, -1, 1\right)\right) \cdot \frac{180^\circ}{\pi} \ge 10^\circ$$
 * **100% Бит-в-бит верификация:**
   Результаты работы TypeScript-движка сопоставлены с эталонным модулем организаторов [`calculation_module/geometry.py`](./calculation_module/geometry.py) на всех сценариях ТЗ — **расхождений 0.000%**.
+
 
 ### Раздел 7. Алгоритмы маршрутизации и реакция на разрывы (15 баллов)
 * **Двухкритериальный алгоритм Дейкстры:**
