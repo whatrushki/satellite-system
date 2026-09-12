@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { PolarMapCanvas } from './PolarMapCanvas'
 import { Globe3DView } from './Globe3DView'
+import { CoverageHUD } from '@/components/globe/CoverageHUD'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { RotateCcw, BarChart2 } from 'lucide-react'
@@ -71,6 +72,11 @@ export const MapContainer: React.FC = () => {
       {/* Center 3D/2D Viewport */}
       <div className="w-full h-full relative">
         {viewMode === '2d' ? <PolarMapCanvas /> : <Globe3DView />}
+
+        {/* Real-time Coverage HUD Overlay */}
+        <div className="absolute top-16 left-[304px] z-20 pointer-events-none">
+          <CoverageHUD />
+        </div>
       </div>
     </div>
   )

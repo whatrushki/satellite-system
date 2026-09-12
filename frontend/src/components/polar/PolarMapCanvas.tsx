@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { computePositions } from '@/core/geometryEngine'
+import { computeFootprintAlpha } from '@/core/coverageEngine'
 
 export const PolarMapCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -16,6 +17,8 @@ export const PolarMapCanvas: React.FC = () => {
     setSelectedStation,
     clearSelection,
     simulationResult,
+    coverageMode,
+    coverageElevation,
   } = useSimulationStore()
 
   const [hoveredNode, setHoveredNode] = useState<{
@@ -400,7 +403,11 @@ export const PolarMapCanvas: React.FC = () => {
         }
       }
 
-      // 6. Draw Satellites (Clean matte circles)
+      // 6. Draw Satellites (Clean matte circles + Real-time Coverage Footprints)
+      const altKm = activeScenario?.environment.altitude_km || 550
+      const { alphaDeg } = computeFootprintAlpha(altKm, coverageElevation || 25)
+      const fpPx = maxRadius * (alphaDeg / (90 - minLat))
+
       for (const sat of liveSats) {
         const rSat = Math.hypot(sat.x_km, sat.y_km, sat.z_km)
         const lat = Math.asin(sat.z_km / rSat) * (180 / Math.PI)
@@ -418,6 +425,21 @@ export const PolarMapCanvas: React.FC = () => {
 
         ctx.save()
         if (sat.active) {
+          // Draw coverage footprint on 2D polar map
+          if (coverageMode !== 'off') {
+            if (coverageMode === 'all' || (coverageMode === 'route' && isInRoute)) {
+              ctx.save()
+              ctx.beginPath()
+              ctx.arc(sx, sy, fpPx, 0, 2 * Math.PI)
+              ctx.fillStyle = isInRoute ? 'rgba(16, 185, 129, 0.16)' : 'rgba(56, 189, 248, 0.08)'
+              ctx.fill()
+              ctx.strokeStyle = isInRoute ? 'rgba(52, 211, 153, 0.75)' : 'rgba(56, 189, 248, 0.28)'
+              ctx.lineWidth = isInRoute ? 1.5 : 0.75
+              ctx.stroke()
+              ctx.restore()
+            }
+          }
+
           let color = '#e4e4e7' // P1 (white-silver)
           if (sat.plane_id === 'P2') color = '#a1a1aa'
           if (sat.plane_id === 'P3') color = '#71717a'

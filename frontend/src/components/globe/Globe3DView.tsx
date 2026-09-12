@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { groundPosition, computePositions } from '@/core/geometryEngine'
+import { computeFootprintAlpha } from '@/core/coverageEngine'
 import { AtmosphereGlowShader } from './AtmosphereShader'
 import { createStarfield } from './Starfield'
 import earthAtmosUrl from '@/assets/earth_atmos_2048.jpg'
@@ -183,7 +184,14 @@ export const Globe3DView: React.FC = () => {
     setSelectedStation,
     clearSelection,
     simulationResult,
+    coverageMode,
+    coverageElevation,
   } = useSimulationStore()
+
+  const coverageModeRef = useRef(coverageMode)
+  useEffect(() => {
+    coverageModeRef.current = coverageMode
+  }, [coverageMode])
 
   const selectedTargetRef = useRef(selectedTarget)
   const prevTargetRef = useRef(selectedTarget)
@@ -208,6 +216,7 @@ export const Globe3DView: React.FC = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const cloudsMeshRef = useRef<THREE.Mesh | null>(null)
   const satGroupRef = useRef<THREE.Group | null>(null)
+  const coverageGroupRef = useRef<THREE.Group | null>(null)
   const linksGroupRef = useRef<THREE.Group | null>(null)
   const routeGroupRef = useRef<THREE.Group | null>(null)
   const orbitRingsGroupRef = useRef<THREE.Group | null>(null)
@@ -230,6 +239,8 @@ export const Globe3DView: React.FC = () => {
     innerRingMesh?: THREE.Mesh
     outerRingMesh?: THREE.Mesh
     groundTargetRing?: THREE.Mesh
+    footprintCapMesh?: THREE.Mesh
+    footprintRingMesh?: THREE.LineLoop
   }>>(new Map())
   const groundNodesMapRef = useRef<Map<string, {
     pinMesh: THREE.Mesh
@@ -371,73 +382,36 @@ export const Globe3DView: React.FC = () => {
     })
     scene.add(new THREE.Mesh(atmoGeo, atmoMat))
 
-    // 4. THE SPACEX ARCTIC COVERAGE DOME (Monochrome silver cap)
+    // 4. Arctic Circle Reference Line (66.5° N - North Polar Circle)
     const capAngle = ((90 - 66.5) * Math.PI) / 180
-    const domeGeo = new THREE.SphereGeometry(
-      EARTH_RADIUS * 1.012,
-      64,
-      16,
-      0,
-      Math.PI * 2,
-      0,
-      capAngle
-    )
-    const domeMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.08,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-    const arcticDome = new THREE.Mesh(domeGeo, domeMat)
-    scene.add(arcticDome)
-
-    // Phased-Array Beam Matrix (Starlink Cells): 180 subtle white luminous dots
-    const dotCount = 180
-    const dotPositions = new Float32Array(dotCount * 3)
-    for (let d = 0; d < dotCount; d++) {
-      const u = Math.random()
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(1 - u * (1 - Math.cos(capAngle)))
-      const r = EARTH_RADIUS * 1.014
-      dotPositions[d * 3] = r * Math.sin(phi) * Math.cos(theta)
-      dotPositions[d * 3 + 1] = r * Math.cos(phi)
-      dotPositions[d * 3 + 2] = r * Math.sin(phi) * Math.sin(theta)
-    }
-    const dotsGeo = new THREE.BufferGeometry()
-    dotsGeo.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3))
-    const dotsMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 1.8,
-      transparent: true,
-      opacity: 0.70,
-      sizeAttenuation: false,
-    })
-    scene.add(new THREE.Points(dotsGeo, dotsMat))
-
-    // Arctic Boundary Contour Ring (White/Silver)
     const circleRingGeo = new THREE.BufferGeometry()
     const ringPts: THREE.Vector3[] = []
-    const ringR = EARTH_RADIUS * 1.014 * Math.sin(capAngle)
-    const ringY = EARTH_RADIUS * 1.014 * Math.cos(capAngle)
+    const ringR = EARTH_RADIUS * 1.003 * Math.sin(capAngle)
+    const ringY = EARTH_RADIUS * 1.003 * Math.cos(capAngle)
     for (let a = 0; a <= 96; a++) {
       const rad = (a / 96) * Math.PI * 2
       ringPts.push(new THREE.Vector3(ringR * Math.cos(rad), ringY, ringR * Math.sin(rad)))
     }
     circleRingGeo.setFromPoints(ringPts)
-    const circleRingMat = new THREE.LineBasicMaterial({
-      color: 0xffffff,
+    const circleRingMat = new THREE.LineDashedMaterial({
+      color: 0x94a3b8,
       transparent: true,
-      opacity: 0.40,
-      linewidth: 1.5,
+      opacity: 0.35,
+      dashSize: 0.12,
+      gapSize: 0.08,
     })
-    scene.add(new THREE.LineLoop(circleRingGeo, circleRingMat))
+    const arcticLine = new THREE.LineLoop(circleRingGeo, circleRingMat)
+    arcticLine.computeLineDistances()
+    scene.add(arcticLine)
 
     // Groups for dynamic aerospace entities
     const orbitRingsGroup = new THREE.Group()
     scene.add(orbitRingsGroup)
     orbitRingsGroupRef.current = orbitRingsGroup
+
+    const coverageGroup = new THREE.Group()
+    scene.add(coverageGroup)
+    coverageGroupRef.current = coverageGroup
 
     const satGroup = new THREE.Group()
     scene.add(satGroup)
@@ -721,6 +695,7 @@ export const Globe3DView: React.FC = () => {
       ;(stars.material as THREE.Material).dispose()
 
       if (satGroupRef.current) clearGroup(satGroupRef.current)
+      if (coverageGroupRef.current) clearGroup(coverageGroupRef.current)
       if (linksGroupRef.current) clearGroup(linksGroupRef.current)
       if (routeGroupRef.current) clearGroup(routeGroupRef.current)
       if (orbitRingsGroupRef.current) clearGroup(orbitRingsGroupRef.current)
@@ -781,11 +756,13 @@ export const Globe3DView: React.FC = () => {
       return
 
     const satGroup = satGroupRef.current
+    const coverageGroup = coverageGroupRef.current
     const linksGroup = linksGroupRef.current
     const routeGroup = routeGroupRef.current
 
     // Clear previous
     clearGroup(satGroup)
+    if (coverageGroup) clearGroup(coverageGroup)
     clearGroup(linksGroup)
     clearGroup(routeGroup)
     satNodesMapRef.current.clear()
@@ -941,6 +918,29 @@ export const Globe3DView: React.FC = () => {
     const initialPositions = computePositions(activeScenario, currentTime_s)
     const initialSatMap = new Map(initialPositions.map((s) => [s.id, s]))
 
+    // Calculate footprint cap and ring geometries based on current elevation threshold
+    const altitudeKm = activeScenario.environment.altitude_km || 550
+    const { alphaRad } = computeFootprintAlpha(altitudeKm, coverageElevation || 25)
+
+    const footprintCapGeo = new THREE.SphereGeometry(
+      EARTH_RADIUS * 1.003,
+      32,
+      8,
+      0,
+      Math.PI * 2,
+      0,
+      alphaRad
+    )
+
+    const capRingPts: THREE.Vector3[] = []
+    const capR = EARTH_RADIUS * 1.004 * Math.sin(alphaRad)
+    const capY = EARTH_RADIUS * 1.004 * Math.cos(alphaRad)
+    for (let a = 0; a <= 64; a++) {
+      const rad = (a / 64) * Math.PI * 2
+      capRingPts.push(new THREE.Vector3(capR * Math.cos(rad), capY, capR * Math.sin(rad)))
+    }
+    const footprintRingGeo = new THREE.BufferGeometry().setFromPoints(capRingPts)
+
     for (const satCfg of activeScenario.design.satellites) {
       const sat = initialSatMap.get(satCfg.id) || {
         id: satCfg.id,
@@ -966,6 +966,29 @@ export const Globe3DView: React.FC = () => {
       )
       groundDot.userData = { type: 'satellite', id: sat.id }
       satGroup.add(groundDot)
+
+      // Dynamic Real-time Footprint Cap & Contour on Earth Sphere
+      const capMat = new THREE.MeshBasicMaterial({
+        color: isInRoute ? 0x10b981 : isSelected ? 0x38bdf8 : 0x0284c7,
+        transparent: true,
+        opacity: isInRoute ? 0.35 : isSelected ? 0.28 : 0.12,
+        side: THREE.FrontSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+      const footprintCapMesh = new THREE.Mesh(footprintCapGeo, capMat)
+      footprintCapMesh.userData = { type: 'satellite', id: sat.id }
+      if (coverageGroup) coverageGroup.add(footprintCapMesh)
+
+      const ringMat = new THREE.LineBasicMaterial({
+        color: isInRoute ? 0x34d399 : isSelected ? 0xffffff : 0x38bdf8,
+        transparent: true,
+        opacity: isInRoute ? 0.95 : isSelected ? 0.85 : 0.35,
+        linewidth: isInRoute ? 2.0 : 1.0,
+      })
+      const footprintRingMesh = new THREE.LineLoop(footprintRingGeo, ringMat)
+      footprintRingMesh.userData = { type: 'satellite', id: sat.id }
+      if (coverageGroup) coverageGroup.add(footprintRingMesh)
 
       // Footprint ring on the Earth surface
       const groundRing = new THREE.Mesh(
@@ -1072,6 +1095,8 @@ export const Globe3DView: React.FC = () => {
         innerRingMesh,
         outerRingMesh,
         groundTargetRing,
+        footprintCapMesh,
+        footprintRingMesh,
       })
     }
 
@@ -1108,7 +1133,7 @@ export const Globe3DView: React.FC = () => {
       pMesh.visible = false
       packetMeshGroup.add(pMesh)
     }
-  }, [activeScenario, selectedClientId, selectedSatelliteId, selectedTarget])
+  }, [activeScenario, selectedClientId, selectedSatelliteId, selectedTarget, coverageElevation])
 
   // Continuous real-time position update function
   const updateRealtimePositions = useCallback(
@@ -1196,6 +1221,45 @@ export const Globe3DView: React.FC = () => {
           if (node.trackerDot) {
             const dotCol = isFailed ? 0xef4444 : isSelected ? 0xffffff : isInRoute ? 0xffffff : 0xd4d4d8
             ;(node.trackerDot.material as THREE.MeshBasicMaterial).color.setHex(dotCol)
+          }
+
+          // 7. Dynamic Real-time Footprint Cap & Contour orientation and styling
+          if (node.footprintCapMesh && node.footprintRingMesh) {
+            node.footprintCapMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial)
+            node.footprintRingMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial)
+
+            const curMode = coverageModeRef.current
+
+            if (curMode === 'off' || isFailed) {
+              node.footprintCapMesh.visible = false
+              node.footprintRingMesh.visible = false
+            } else if (curMode === 'route') {
+              node.footprintCapMesh.visible = isInRoute
+              node.footprintRingMesh.visible = isInRoute
+            } else {
+              // curMode === 'all'
+              node.footprintCapMesh.visible = true
+              node.footprintRingMesh.visible = true
+            }
+
+            const capMat = node.footprintCapMesh.material as THREE.MeshBasicMaterial
+            const ringMat = node.footprintRingMesh.material as THREE.LineBasicMaterial
+            if (isInRoute) {
+              capMat.color.setHex(0x10b981)
+              capMat.opacity = 0.36
+              ringMat.color.setHex(0x34d399)
+              ringMat.opacity = 0.95
+            } else if (isSelected) {
+              capMat.color.setHex(0x38bdf8)
+              capMat.opacity = 0.28
+              ringMat.color.setHex(0xffffff)
+              ringMat.opacity = 0.85
+            } else {
+              capMat.color.setHex(0x0284c7)
+              capMat.opacity = 0.12
+              ringMat.color.setHex(0x38bdf8)
+              ringMat.opacity = 0.35
+            }
           }
         }
       }
