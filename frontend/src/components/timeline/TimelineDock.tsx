@@ -171,9 +171,9 @@ export const TimelineDock: React.FC = () => {
             step={step}
             value={currentTime_s}
             onChange={(e) => setTime(parseFloat(e.target.value))}
-            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-emerald-400 bg-zinc-800/90 border border-white/10 hover:border-emerald-500/50 transition-all shadow-inner focus:outline-none"
+            className="timeline-slider-white w-full h-2 rounded-full appearance-none cursor-pointer border border-white/20 hover:border-white/50 transition-all shadow-inner focus:outline-none"
             style={{
-              background: `linear-gradient(to right, #10b981 ${(currentTime_s / (maxTime || 1)) * 100}%, #27272a ${(currentTime_s / (maxTime || 1)) * 100}%)`,
+              background: `linear-gradient(to right, #ffffff ${(currentTime_s / (maxTime || 1)) * 100}%, rgba(255, 255, 255, 0.16) ${(currentTime_s / (maxTime || 1)) * 100}%)`,
             }}
           />
         </div>

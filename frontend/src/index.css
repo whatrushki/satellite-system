@@ -82,3 +82,38 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* White Timeline Slider */
+.timeline-slider-white {
+  accent-color: #ffffff;
+}
+.timeline-slider-white::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #09090b;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.timeline-slider-white::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 1), 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+.timeline-slider-white::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #09090b;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.timeline-slider-white::-moz-range-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 1), 0 1px 4px rgba(0, 0, 0, 0.9);
+}
