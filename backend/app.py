@@ -1,13 +1,21 @@
 from __future__ import annotations
-import os, sys, json, math, heapq
+import os, sys, json, math, heapq, io
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Response
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import geometry
+
+ROOT_DIR = Path(__file__).parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+try:
+    from generate_pdf_report import generate_cosmo_report
+except Exception as e:
+    generate_cosmo_report = None
 
 app = FastAPI(title='Cosmo-Net Constellation Resilience API', version='1.0.0')
 
@@ -282,6 +290,30 @@ def get_pdf_report():
     if pdf_path.exists():
         return FileResponse(str(pdf_path), media_type='application/pdf', filename='cosmo_net_detailed_report.pdf')
     raise HTTPException(status_code=404, detail='Report PDF not found')
+
+@app.post('/api/report/pdf')
+def generate_pdf_report_endpoint(scenario: dict = Body(...)):
+    if not generate_cosmo_report:
+        raise HTTPException(status_code=500, detail='PDF generator module not available')
+    try:
+        sim = run_simulation(scenario)
+    except Exception:
+        sim = None
+
+    buf = io.BytesIO()
+    try:
+        generate_cosmo_report(buf, scenario, sim)
+        buf.seek(0)
+        scenario_id = scenario.get('meta', {}).get('id', 'scenario')
+        return Response(
+            content=buf.getvalue(),
+            media_type='application/pdf',
+            headers={
+                'Content-Disposition': f'inline; filename="cosmo_report_{scenario_id}.pdf"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'PDF generation failed: {e}')
 
 if __name__ == '__main__':
     import uvicorn

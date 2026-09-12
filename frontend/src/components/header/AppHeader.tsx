@@ -12,6 +12,7 @@ import {
   Check,
   Trash2,
   FileText,
+  Loader2,
 } from 'lucide-react'
 
 interface AppHeaderProps {
@@ -64,6 +65,40 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
   const handleReset = async () => {
     await resetToOriginal()
     recalculate()
+  }
+
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
+
+  const handleOpenReport = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (isGeneratingReport) return
+    setIsGeneratingReport(true)
+
+    try {
+      if (activeScenario) {
+        // Dynamic generation reflecting exact active configuration and sandbox modifications
+        const response = await fetch('/api/report/pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(activeScenario),
+        })
+
+        if (response.ok) {
+          const blob = await response.blob()
+          const blobUrl = URL.createObjectURL(blob)
+          window.open(blobUrl, '_blank')
+          setIsGeneratingReport(false)
+          return
+        }
+      }
+    } catch (err) {
+      console.warn('Backend dynamic PDF generation failed, falling back to pre-generated report:', err)
+    }
+
+    // Fallback: Scenario-specific pre-generated PDF or global report.pdf
+    const scenarioPdf = activeScenarioId ? `./report_${activeScenarioId}.pdf` : './report.pdf'
+    window.open(scenarioPdf, '_blank')
+    setIsGeneratingReport(false)
   }
 
   const currentStage = activeScenario?.design.launch_stage || 3
@@ -249,17 +284,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
           </button>
         </div>
 
-        {/* Report PDF Button: opens PDF directly in another page/tab */}
-        <a
-          href="./report.pdf"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[11px] font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-          title="Открыть подробный научно-технический отчёт в формате PDF в новой вкладке"
+        {/* Dynamic Scenario-Specific Report PDF Button */}
+        <button
+          onClick={handleOpenReport}
+          disabled={isGeneratingReport}
+          className={`bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[11px] font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_0_12px_rgba(16,185,129,0.2)] ${
+            isGeneratingReport ? 'opacity-75 cursor-wait' : ''
+          }`}
+          title="Сгенерировать и открыть подробный научно-технический отчёт в формате PDF по выбранному сценарию в новой вкладке"
         >
-          <FileText className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Отчёт PDF</span>
-        </a>
+          {isGeneratingReport ? (
+            <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+          ) : (
+            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+          )}
+          <span>{isGeneratingReport ? 'Генерация...' : 'Отчёт PDF'}</span>
+        </button>
       </div>
     </header>
   )
