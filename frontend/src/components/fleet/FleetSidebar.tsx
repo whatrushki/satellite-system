@@ -4,6 +4,7 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { OrbitConfigurator } from '@/components/sidebar/OrbitConfigurator'
 import { OutageManager } from '@/components/sidebar/OutageManager'
 import { Radio, Network, CheckCircle2, XCircle, MapPin, Server, Signal } from 'lucide-react'
+import { computeRealtimeCoverage } from '@/core/coverageEngine'
 
 export const FleetSidebar: React.FC = () => {
   const activeScenario = useScenarioStore((state) => state.activeScenario)
@@ -72,6 +73,26 @@ export const FleetSidebar: React.FC = () => {
     }
     return map
   }, [activeScenario])
+
+  const coverageMetrics = useMemo(() => {
+    if (!activeScenario || !currentSnap) return null
+    return computeRealtimeCoverage(
+      activeScenario,
+      currentSnap.satellites.map((s) => ({
+        id: s.id,
+        plane_id: s.plane_id || '',
+        active: s.active,
+        x_km: s.x_km,
+        y_km: s.y_km,
+        z_km: s.z_km,
+      })),
+      activeScenario.environment.min_elevation_deg || 10.0,
+      activeRoutePath
+    )
+  }, [activeScenario, currentSnap, activeRoutePath])
+
+  const singleSatAreaMkm2 = coverageMetrics?.singleFootprintAreaMkm2 ?? 8.7
+  const singleSatRadiusKm = coverageMetrics?.footprintRadiusKm ?? 1665
 
   if (!activeScenario || !simulationResult) {
     return (
@@ -330,6 +351,45 @@ export const FleetSidebar: React.FC = () => {
         )}
         {activeTab === 'fleet' && (
           <div className="flex flex-col gap-1.5">
+            {/* Live Constellation Coverage Header Banner */}
+            {coverageMetrics && (
+              <div className="bg-black/50 border border-white/10 rounded-xl p-2 font-mono text-[10px] space-y-1.5 shadow-sm">
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span className="flex items-center gap-1.5 font-bold tracking-wider text-[9.5px] uppercase text-zinc-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981] animate-pulse" />
+                    <span>Радиопокрытие сети</span>
+                  </span>
+                  <span className="text-[8.5px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-sans font-bold uppercase">
+                    LIVE
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="bg-white/5 p-1.5 rounded-lg border border-white/5">
+                    <div className="text-[8.5px] text-zinc-400 uppercase tracking-wide">Земной шар</div>
+                    <div className="text-xs font-black text-white mt-0.5 tabular-nums">
+                      {coverageMetrics.totalCoveredAreaMkm2}{' '}
+                      <span className="text-[8.5px] text-zinc-400 font-normal">млн км²</span>
+                    </div>
+                    <div className="text-[8.5px] text-zinc-400 mt-0.5">
+                      {coverageMetrics.globalCoveragePct}% Земли
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 p-1.5 rounded-lg border border-white/5">
+                    <div className="text-[8.5px] text-zinc-400 uppercase tracking-wide">Арктика (≥65°)</div>
+                    <div className="text-xs font-black text-emerald-400 mt-0.5 tabular-nums flex items-center gap-1">
+                      <span>{coverageMetrics.arcticCoveragePct}%</span>
+                    </div>
+                    <div className="text-[8.5px] text-zinc-400 mt-0.5">
+                      {coverageMetrics.activeSatsInArctic} КА над регионом
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* List of satellite cards with per-satellite coverage telemetry */}
             {satsList.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId
               const isInRoute = activeRoutePath.includes(sat.id)
@@ -337,6 +397,18 @@ export const FleetSidebar: React.FC = () => {
               const elev = currentSnap?.elevation_deg[selectedClientId]?.[sat.id] ?? null
               const isVisible = elev != null && elev >= minEl && sat.active
               const linksCount = islCounts.get(sat.id) || 0
+
+              // Sub-satellite nadir point latitude & Arctic status
+              const len = Math.hypot(sat.x_km, sat.y_km, sat.z_km)
+              const latDeg = len > 0 ? (Math.asin(Math.max(-1, Math.min(1, sat.z_km / len))) * 180) / Math.PI : 0
+              const isArctic = latDeg >= 60.0
+              const latStr = `${Math.abs(latDeg).toFixed(0)}°${latDeg >= 0 ? 'N' : 'S'}`
+
+              // Check if sat sees any gateway for single-hop direct relay
+              const visibleGateway = activeScenario.ground_sites
+                .filter((g) => g.role === 'gateway')
+                .find((gw) => (currentSnap?.elevation_deg[gw.id]?.[sat.id] ?? -90) >= minEl)
+              const isDirectRelay = isVisible && Boolean(visibleGateway)
 
               return (
                 <div
@@ -352,11 +424,11 @@ export const FleetSidebar: React.FC = () => {
                     isSelected
                       ? 'bg-white/15 border-white/40 shadow-sm'
                       : isInRoute
-                      ? 'bg-white/[0.07] border-white/20'
+                      ? 'bg-emerald-950/20 border-emerald-500/30'
                       : 'bg-black/35 border-white/5 hover:border-white/15'
                   }`}
                 >
-                  {/* Top line: Satellite ID + Batch + Status */}
+                  {/* Top line: Satellite ID + Plane + Slot + Status */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-white font-mono text-[11px]">
@@ -371,8 +443,16 @@ export const FleetSidebar: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {isDirectRelay && (
+                        <span
+                          className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-sans px-1.5 py-0.2 rounded uppercase"
+                          title="Прямой ретранслятор: видит абонента и шлюз одновременно"
+                        >
+                          ⚡ Реле
+                        </span>
+                      )}
                       {isInRoute && (
-                        <span className="text-[8px] bg-white text-zinc-950 font-bold font-sans px-1.5 py-0.2 rounded uppercase">
+                        <span className="text-[8px] bg-emerald-400 text-zinc-950 font-bold font-sans px-1.5 py-0.2 rounded uppercase">
                           Маршрут
                         </span>
                       )}
@@ -388,15 +468,40 @@ export const FleetSidebar: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Second line: Radio Elevation & ISL links */}
-                  <div className="flex items-center justify-between mt-1 text-[10px] text-zinc-400 font-mono pt-1 border-t border-white/5">
+                  {/* Second line: Footprint Area + Nadir Position / Arctic indicator */}
+                  <div className="flex items-center justify-between mt-1 text-[9.5px] text-zinc-400 font-mono pt-1 border-t border-white/5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-zinc-500">Зона:</span>
+                      <span className={sat.active ? 'text-zinc-200 font-semibold' : 'text-zinc-600'}>
+                        {sat.active ? `${singleSatAreaMkm2} млн км²` : '0'}
+                      </span>
+                      <span className="text-[8.5px] text-zinc-500 hidden sm:inline">
+                        (R={singleSatRadiusKm}км)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-zinc-500">Надир:</span>
+                      <span
+                        className={`font-semibold flex items-center gap-0.5 ${
+                          isArctic ? 'text-sky-300 font-bold' : 'text-zinc-300'
+                        }`}
+                      >
+                        {isArctic && <span title="В Арктике (≥60° с.ш.)">❄️</span>}
+                        <span>{latStr}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Third line: Radio Elevation to selected client & ISL links */}
+                  <div className="flex items-center justify-between mt-1 text-[9.5px] text-zinc-400 font-mono">
                     <div className="flex items-center gap-1">
                       <Radio className="w-3 h-3 text-zinc-500" />
                       <span>{selectedClientId}:</span>
                       <b
                         className={
                           isVisible
-                            ? 'text-emerald-300'
+                            ? 'text-emerald-300 font-bold'
                             : elev != null
                             ? 'text-zinc-400'
                             : 'text-zinc-600'
@@ -404,6 +509,11 @@ export const FleetSidebar: React.FC = () => {
                       >
                         {elev != null ? `${elev.toFixed(0)}°` : '—'}
                       </b>
+                      {isVisible && (
+                        <span className="text-[7.5px] text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-1 rounded uppercase">
+                          В зоне
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1">
