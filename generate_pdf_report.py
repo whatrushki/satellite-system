@@ -729,14 +729,11 @@ def generate_cosmo_report(output_target, scenario: dict, sim_summary: dict = Non
 
 if __name__ == '__main__':
     # Standalone execution: pre-generate reports for default scenario or specific files
-    backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
-    calc_dir = os.path.join(os.path.dirname(__file__), 'Расчетный модуль')
-    if backend_dir not in sys.path:
-        sys.path.append(backend_dir)
+    calc_dir = os.path.join(os.path.dirname(__file__), 'calculation_module')
     if calc_dir not in sys.path:
         sys.path.append(calc_dir)
 
-    scenario_file = sys.argv[1] if len(sys.argv) > 1 else "Данные/01_full_constellation.json"
+    scenario_file = sys.argv[1] if len(sys.argv) > 1 else "data/01_full_constellation.json"
     out_pdf = sys.argv[2] if len(sys.argv) > 2 else "report.pdf"
 
     if os.path.exists(scenario_file):

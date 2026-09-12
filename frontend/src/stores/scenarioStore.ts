@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { Scenario, EnvironmentConfig, FailureOutage } from '../core/types'
-import sc01 from '../../../Данные/01_full_constellation.json'
-import sc02 from '../../../Данные/02_first_launch.json'
-import sc03 from '../../../Данные/03_satellite_outages.json'
-import sc04 from '../../../Данные/04_link_range.json'
-import sc05 from '../../../Данные/05_sparse_planes.json'
-import sc06 from '../../../Данные/06_dual_gateway_failover.json'
+import sc01 from '../../../data/01_full_constellation.json'
+import sc02 from '../../../data/02_first_launch.json'
+import sc03 from '../../../data/03_satellite_outages.json'
+import sc04 from '../../../data/04_link_range.json'
+import sc05 from '../../../data/05_sparse_planes.json'
+import sc06 from '../../../data/06_dual_gateway_failover.json'
 
 export interface SavedVariant {
   id: string
@@ -92,9 +92,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
         ? import.meta.env.BASE_URL
         : `${import.meta.env.BASE_URL}/`
       const candidateUrls = [
-        `${baseUrl}Данные/${id}.json`,
         `${baseUrl}data/${id}.json`,
-        `./Данные/${id}.json`,
         `./data/${id}.json`,
       ]
       let data: Scenario | null = null

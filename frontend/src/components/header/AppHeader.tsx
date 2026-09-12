@@ -69,39 +69,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
 
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
 
-  const handleOpenReport = async (e: React.MouseEvent) => {
+  const handleOpenReport = (e: React.MouseEvent) => {
     e.preventDefault()
-    if (isGeneratingReport) return
     setIsGeneratingReport(true)
 
-    try {
-      if (activeScenario) {
-        // Dynamic generation reflecting exact active configuration and sandbox modifications
-        const response = await fetch('/api/report/pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(activeScenario),
-        })
-
-        if (response.ok) {
-          const blob = await response.blob()
-          const blobUrl = URL.createObjectURL(blob)
-          window.open(blobUrl, '_blank')
-          setIsGeneratingReport(false)
-          return
-        }
-      }
-    } catch (err) {
-      console.warn('Backend dynamic PDF generation failed, falling back to pre-generated report:', err)
-    }
-
-    // Fallback: Scenario-specific pre-generated PDF or global report.pdf
+    // Open Scenario-specific PDF report directly in a new tab
     const baseUrl = import.meta.env.BASE_URL.endsWith('/')
       ? import.meta.env.BASE_URL
       : `${import.meta.env.BASE_URL}/`
     const scenarioPdf = activeScenarioId ? `${baseUrl}report_${activeScenarioId}.pdf` : `${baseUrl}report.pdf`
     window.open(scenarioPdf, '_blank')
-    setIsGeneratingReport(false)
+    setTimeout(() => setIsGeneratingReport(false), 500)
   }
 
   const currentStage = activeScenario?.design.launch_stage || 3

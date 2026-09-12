@@ -545,7 +545,7 @@ export const ComparisonView: React.FC = () => {
       ? import.meta.env.BASE_URL
       : `${import.meta.env.BASE_URL}/`
     const loadJson = async (id: string) => {
-      for (const p of [`${baseUrl}Данные/${id}.json`, `${baseUrl}data/${id}.json`, `./Данные/${id}.json`, `./data/${id}.json`]) {
+      for (const p of [`${baseUrl}data/${id}.json`, `./data/${id}.json`]) {
         try {
           const res = await fetch(p)
           if (res.ok) return await res.json()
@@ -581,7 +581,7 @@ export const ComparisonView: React.FC = () => {
       ? import.meta.env.BASE_URL
       : `${import.meta.env.BASE_URL}/`
     const loadJson = async (id: string) => {
-      for (const p of [`${baseUrl}Данные/${id}.json`, `${baseUrl}data/${id}.json`, `./Данные/${id}.json`, `./data/${id}.json`]) {
+      for (const p of [`${baseUrl}data/${id}.json`, `./data/${id}.json`]) {
         try {
           const res = await fetch(p)
           if (res.ok) return await res.json()
