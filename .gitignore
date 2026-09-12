@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 frontend/node_modules/
 
@@ -40,6 +40,22 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Vite cache
+.vite/
+frontend/.vite/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Coverage and tests
+coverage/
+.nyc_output/
+
 # OS and IDE
 .DS_Store
 Thumbs.db
@@ -47,3 +63,4 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.eslintcache

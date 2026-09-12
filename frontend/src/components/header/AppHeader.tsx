@@ -11,14 +11,16 @@ import {
   ChevronDown,
   Check,
   Trash2,
+  FileText,
 } from 'lucide-react'
 
 interface AppHeaderProps {
   onOpenImport: () => void
   onOpenExport: () => void
+  onOpenReport: () => void
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport }) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport, onOpenReport }) => {
   const {
     activeScenario,
     activeScenarioId,
@@ -247,6 +249,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenImport, onOpenExport
             <span>Export</span>
           </button>
         </div>
+
+        {/* Report PDF Button */}
+        <button
+          onClick={onOpenReport}
+          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-[11px] font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+          title="Сгенерировать подробный аналитический отчёт в PDF"
+        >
+          <FileText className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Отчёт PDF</span>
+        </button>
+
+        {/* Presentation Button */}
+        <a
+          href="./presentation.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 px-2.5 py-1 rounded-xl text-[11px] font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+          title="Открыть интерактивную презентацию в новом окне"
+        >
+          <span>Презентация</span>
+        </a>
       </div>
     </header>
   )

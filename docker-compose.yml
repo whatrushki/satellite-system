@@ -1,15 +1,21 @@
-﻿version: "3.8"
-
+version: "3.8"
+ 
 services:
   backend:
+    container_name: cosmo-net-backend
     build:
       context: .
       dockerfile: backend.Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    networks:
+      - cosmo-net-network
 
   frontend:
+    container_name: cosmo-net-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -18,3 +24,9 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - cosmo-net-network
+
+networks:
+  cosmo-net-network:
+    driver: bridge

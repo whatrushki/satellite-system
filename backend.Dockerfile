@@ -1,4 +1,4 @@
-﻿FROM python:3.11-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -6,8 +6,8 @@ COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ /app/backend/
-COPY Расчетный\ модуль/ /app/Расчетный\ модуль/
-COPY Данные/ /app/Данные/
+COPY ["Расчетный модуль/", "/app/Расчетный модуль/"]
+COPY ["Данные/", "/app/Данные/"]
 
 ENV PYTHONPATH="/app/backend:/app/Расчетный модуль"
 
